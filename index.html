@@ -107,7 +107,8 @@
         <span class="tooltip">Нажмите, чтобы определить ваше местоположение</span>
     </button>
 
-   <script>
+    <script>
+    // Функция для получения местоположения
     function getLocation() {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(showPosition);
@@ -116,22 +117,13 @@
         }
     }
 
+    // Функция обработки полученного местоположения
     function showPosition(position) {
         const latitude = position.coords.latitude;
         const longitude = position.coords.longitude;
         const btn = document.querySelector('.btn');
         
-        // Исправленный запрос к API
-        fetch(`https://geocode-maps.yandex.net/1.x/?format=json&lang=ru_RU&geocode=${latitude},${longitude}`)
-            .then(response => response.json())
-            .then(data => {
-                const address = data.response.GeoObjectCollection.featureMember[0].GeoObject.metaDataProperty.GeocoderMetaData.AddressLine;
-                
-                btn.textContent = address || 'Адрес не найден';
-            })
-            .catch(error => {
-                console.error('Ошибка получения адреса:', error);
-                btn.textContent = 'Ошибка определения адреса';
+        //
             });
     }
     </script>
