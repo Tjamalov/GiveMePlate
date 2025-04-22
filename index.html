@@ -80,7 +80,7 @@
                         const longitude = position.coords.longitude;
                         
                         // Используем API Яндекс.Карт для получения адреса
-                        getAddressFromYandex(latitude, longitude);
+                        getAddressFromYandex(longitude, latitude);
                     },
                     function(error) {
                         let errorMessage;
