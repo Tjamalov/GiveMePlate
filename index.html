@@ -3,88 +3,133 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Карта с геолокацией</title>
-    <script src="https://api-maps.yandex.ru/2.1/?apikey=cfcc5dee-0d3e-4cd5-9867-f453cd81ae64&lang=ru_RU" type="text/javascript"></script>
+    <title>Геолокация</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        html, body {
-            height: 100%;
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: #000;
+            color: #fff;
             margin: 0;
-            padding: 0;
-        }
-        #map {
-            width: 100%;
-            height: 80vh;
-        }
-        .controls {
-            width: 100%;
-            max-width: 600px;
-            margin: 20px auto;
+            padding: 20px;
             text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
         }
-        .controls button {
-            padding: 10px 20px;
-            font-size: 16px;
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            font-weight: 700;
+        }
+        
+        button {
+            background-color: #fff;
+            color: #000;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            border-radius: 30px;
             cursor: pointer;
+            margin-bottom: 30px;
+            transition: all 0.3s;
         }
-        .address {
-            width: 100%;
-            max-width: 600px;
-            margin: 10px auto;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 16px;
+        
+        button:hover {
+            background-color: #ddd;
+        }
+        
+        #locationText {
+            font-size: 1.2rem;
+            max-width: 80%;
+            line-height: 1.5;
+        }
+        
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 2rem;
+            }
+            
+            button {
+                padding: 12px 25px;
+                font-size: 1rem;
+            }
+            
+            #locationText {
+                font-size: 1rem;
+            }
         }
     </style>
 </head>
 <body>
-    <div id="map"></div>
-    <div class="controls">
-        <button onclick="findLocation()">Найти</button>
-    </div>
-    <div class="address" id="address"></div>
+    <h1>Vibes</h1>
+    <button id="findMeBtn">Найти меня</button>
+    <div id="locationText">Нажмите кнопку, чтобы определить ваше местоположение</div>
 
     <script>
-        // Инициализация карты
-        ymaps.ready(init);
-        
-        function init() {
-            var myMap = new ymaps.Map('map', {
-                center: [55.76, 37.64],
-                zoom: 10
-            });
-            
-            var myPlacemark = new ymaps.Placemark([55.76, 37.64], {
-                hintContent: 'Ваш адрес',
-                balloonContent: 'Нажмите "Найти" для определения местоположения'
-            });
-            
-            myMap.geoObjects.add(myPlacemark);
-            
-            function findLocation() {
-                if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(function(position) {
-                        var coords = [
-                            position.coords.latitude,
-                            position.coords.longitude
-                        ];
+        document.getElementById('findMeBtn').addEventListener('click', function() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        const latitude = position.coords.latitude;
+                        const longitude = position.coords.longitude;
                         
-                        myPlacemark.geometry.setCoordinates(coords);
-                        myMap.panTo(coords);
-                        
-                        // Получаем адрес по координатам
-                        ymaps.geocode(coords).then(function (res) {
-                            var first = res.geoObjects.get(0);
-                            var address = first.properties.get('text');
-                            document.getElementById('address').textContent = address;
-                        });
-                    }, function() {
-                        alert('Не удалось определить ваше местоположение');
-                    });
-                } else {
-                    alert('Ваш браузер не поддерживает геолокацию');
-                }
+                        // Используем API Яндекс.Карт для получения адреса
+                        getAddressFromYandex(latitude, longitude);
+                    },
+                    function(error) {
+                        let errorMessage;
+                        switch(error.code) {
+                            case error.PERMISSION_DENIED:
+                                errorMessage = "Вы отказали в запросе геолокации";
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                errorMessage = "Информация о местоположении недоступна";
+                                break;
+                            case error.TIMEOUT:
+                                errorMessage = "Время запроса геолокации истекло";
+                                break;
+                            case error.UNKNOWN_ERROR:
+                                errorMessage = "Произошла неизвестная ошибка";
+                                break;
+                        }
+                        document.getElementById('locationText').textContent = errorMessage;
+                    }
+                );
+            } else {
+                document.getElementById('locationText').textContent = "Геолокация не поддерживается вашим браузером";
             }
+        });
+
+        function getAddressFromYandex(latitude, longitude) {
+            // В реальном проекте вам нужно зарегистрироваться в Яндекс.Картах и получить API-ключ
+            // Это демонстрационный код, который может не работать без реального API-ключа
+            
+            document.getElementById('locationText').textContent = "Определяем адрес...";
+            
+            // Замените YOUR_API_KEY на реальный ключ от Яндекс.Карт
+            const apiKey = 'YOUR_API_KEY';
+            const url = `https://geocode-maps.yandex.ru/1.x/?apikey=${apiKey}&format=json&geocode=${longitude},${latitude}&lang=ru_RU`;
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    try {
+                        const address = data.response.GeoObjectCollection.featureMember[0].GeoObject.metaDataProperty.GeocoderMetaData.text;
+                        document.getElementById('locationText').textContent = `Ваш адрес: ${address}`;
+                    } catch (e) {
+                        document.getElementById('locationText').textContent = "Не удалось определить адрес";
+                    }
+                })
+                .catch(error => {
+                    console.error('Ошибка при запросе к Яндекс.Картам:', error);
+                    document.getElementById('locationText').textContent = `Ваши координаты: ${latitude.toFixed(6)}, ${longitude.toFixed(6)} (не удалось получить адрес)`;
+                });
         }
     </script>
 </body>
