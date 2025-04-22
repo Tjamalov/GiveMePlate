@@ -107,21 +107,35 @@
     </button>
 
     <script>
-        function getLocation() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(showPosition);
-            } else {
-                alert('Геолокация не поддерживается вашим браузером');
-            }
+    function getLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(showPosition);
+        } else {
+            alert('Геолокация не поддерживается вашим браузером');
         }
+    }
 
-        function showPosition(position) {
-            const latitude = position.coords.latitude;
-            const longitude = position.coords.longitude;
-            const btn = document.querySelector('.btn');
-            
-            // Получаем адрес по координатам
-            fetch(`https://geocode-maps.yandex.net/1.x/?format=json&lang=ru_RU&geocode=${longitude},${latitude}`)
-                .then(response => response.json())
-                .then(data => {
-                    const address = data.response.GeoObjectCollection.featureMember[0
+    function showPosition(position) {
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+        const btn = document.querySelector('.btn');
+        
+        // Получаем адрес по координатам
+        fetch(`https://geocode-maps.yandex.net/1.x/?format=json&lang=ru_RU&geocode=${longitude},${latitude}`)
+            .then(response => response.json())
+            .then(data => {
+                const address = data.response.GeoObjectCollection.featureMember[0].GeoObject.metaDataProperty.GeocoderMetaData.Address.Components
+                    .filter(component => ['locality', 'street'].includes(component.kind))
+                    .map(component => component.name)
+                    .join(', ');
+                
+                btn.textContent = address || 'Адрес не найден';
+            })
+            .catch(error => {
+                console.error('Ошибка получения адреса:', error);
+                btn.textContent = 'Ошибка определения адреса';
+            });
+    }
+    </script>
+</body>
+</html>
