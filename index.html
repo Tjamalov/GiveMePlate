@@ -79,8 +79,8 @@
                         const latitude = position.coords.latitude;
                         const longitude = position.coords.longitude;
                         
-                        // Используем API Яндекс.Карт для получения адреса
-                        getAddressFromYandex(longitude, latitude);
+                        // Используем OpenStreetMap Nominatim API
+                        getAddressFromOSM(latitude, longitude);
                     },
                     function(error) {
                         let errorMessage;
@@ -106,29 +106,25 @@
             }
         });
 
-        function getAddressFromYandex(latitude, longitude) {
-            // В реальном проекте вам нужно зарегистрироваться в Яндекс.Картах и получить API-ключ
-            // Это демонстрационный код, который может не работать без реального API-ключа
-            
+        function getAddressFromOSM(latitude, longitude) {
             document.getElementById('locationText').textContent = "Определяем адрес...";
             
-            // Замените YOUR_API_KEY на реальный ключ от Яндекс.Карт
-            const apiKey = 'cfcc5dee-0d3e-4cd5-9867-f453cd81ae64';
-            const url = `https://geocode-maps.yandex.ru/1.x/?apikey=${apiKey}&format=json&geocode=${longitude},${latitude}&lang=ru_RU`;
+            // OpenStreetMap Nominatim API (без ключа)
+            const url = `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=ru`;
             
             fetch(url)
                 .then(response => response.json())
                 .then(data => {
-                    try {
-                        const address = data.response.GeoObjectCollection.featureMember[0].GeoObject.metaDataProperty.GeocoderMetaData.text;
-                        document.getElementById('locationText').textContent = `Ваш адрес: ${address}`;
-                    } catch (e) {
-                        document.getElementById('locationText').textContent = "Не удалось определить адрес";
+                    if (data.error) {
+                        throw new Error(data.error);
                     }
+                    const address = data.display_name || "Адрес не определён";
+                    document.getElementById('locationText').textContent = `Ваш адрес: ${address}`;
                 })
                 .catch(error => {
-                    console.error('Ошибка при запросе к Яндекс.Картам:', error);
-                    document.getElementById('locationText').textContent = `Ваши координаты: ${latitude.toFixed(6)}, ${longitude.toFixed(6)} (не удалось получить адрес)`;
+                    console.error('Ошибка при запросе к OpenStreetMap:', error);
+                    document.getElementById('locationText').textContent = 
+                        `Координаты: ${latitude.toFixed(6)}, ${longitude.toFixed(6)} (не удалось получить адрес)`;
                 });
         }
     </script>
