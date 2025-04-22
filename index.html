@@ -110,7 +110,7 @@
             document.getElementById('locationText').textContent = "Определяем адрес...";
             
             // OpenStreetMap Nominatim API (без ключа)
-            const url = `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=ru`;
+            const url = `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=ru&addressdetails=1`;
             
             fetch(url)
                 .then(response => response.json())
@@ -118,14 +118,37 @@
                     if (data.error) {
                         throw new Error(data.error);
                     }
-                    const address = data.display_name || "Адрес не определён";
-                    document.getElementById('locationText').textContent = `Ваш адрес: ${address}`;
+                    
+                    // Извлекаем только город, улицу и дом
+                    const address = parseOSMAddress(data.address);
+                    document.getElementById('locationText').textContent = address || "Адрес не определён";
                 })
                 .catch(error => {
                     console.error('Ошибка при запросе к OpenStreetMap:', error);
                     document.getElementById('locationText').textContent = 
-                        `Координаты: ${latitude.toFixed(6)}, ${longitude.toFixed(6)} (не удалось получить адрес)`;
+                        `Координаты: ${latitude.toFixed(6)}, ${longitude.toFixed(6)} (адрес не получен)`;
                 });
+        }
+
+        // Функция для извлечения города, улицы и номера дома
+        function parseOSMAddress(addressData) {
+            const address = addressData;
+            let result = [];
+            
+            // Город (проверяем несколько возможных полей)
+            const city = address.city || address.town || address.village || address.municipality;
+            if (city) result.push(city);
+            
+            // Улица
+            if (address.road) result.push(address.road);
+            
+            // Номер дома
+            if (address.house_number) result.push(address.house_number);
+            
+            // Если ничего не нашли, возвращаем полный адрес как fallback
+            return result.length > 0 
+                ? result.join(", ") 
+                : address.display_name || "Адрес не определён";
         }
     </script>
 </body>
