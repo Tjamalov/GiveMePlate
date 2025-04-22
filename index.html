@@ -107,7 +107,7 @@
         <span class="tooltip">Нажмите, чтобы определить ваше местоположение</span>
     </button>
 
-    <script>
+   <script>
     function getLocation() {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(showPosition);
@@ -121,14 +121,11 @@
         const longitude = position.coords.longitude;
         const btn = document.querySelector('.btn');
         
-        // Получаем адрес по координатам
-        fetch(`https://geocode-maps.yandex.net/1.x/?format=json&lang=ru_RU&geocode=${longitude},${latitude}`)
+        // Исправленный запрос к API
+        fetch(`https://geocode-maps.yandex.net/1.x/?format=json&lang=ru_RU&geocode=${latitude},${longitude}`)
             .then(response => response.json())
             .then(data => {
-                const address = data.response.GeoObjectCollection.featureMember[0].GeoObject.metaDataProperty.GeocoderMetaData.Address.Components
-                    .filter(component => ['locality', 'street'].includes(component.kind))
-                    .map(component => component.name)
-                    .join(', ');
+                const address = data.response.GeoObjectCollection.featureMember[0].GeoObject.metaDataProperty.GeocoderMetaData.AddressLine;
                 
                 btn.textContent = address || 'Адрес не найден';
             })
