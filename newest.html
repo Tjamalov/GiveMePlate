@@ -2,62 +2,103 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Найти еду</title>
+    <title>Тетрадь в клеточку</title>
     <style>
         body {
-            background-color: black;
-            color: white;
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding-top: 50px;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
         }
-        .button {
+        
+        .grid-container {
+            width: 900px;
+            height: 900px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 1px;
             background-color: white;
-            color: black;
-            border: none;
-            padding: 10px 20px;
-            margin: 10px;
+        }
+        
+        .grid-item {
+            width: 300px;
+            height: 300px;
+            border: 1px solid #ccc;
             cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+        }
+        
+        .btn-reset {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
         }
     </style>
 </head>
 <body>
-    <h1>Найди ближайшее место с едой!</h1>
-    <br><br>
-    <button onclick="findFood()" class="button">Найти еду</button>
-    <br><br>
-    <a href="index.html" style="color: white;">Перейти на главную</a>
+    <div class="grid-container">
+        <!-- Создадим 9 элементов сетки -->
+        <div class="grid-item" data-id="1"></div>
+        <div class="grid-item" data-id="2"></div>
+        <div class="grid-item" data-id="3"></div>
+        <div class="grid-item" data-id="4"></div>
+        <div class="grid-item" data-id="5"></div>
+        <div class="grid-item" data-id="6"></div>
+        <div class="grid-item" data-id="7"></div>
+        <div class="grid-item" data-id="8"></div>
+        <div class="grid-item" data-id="9"></div>
+    </div>
+    
+    <button class="btn-reset">Сбросить</button>
 
     <script>
-        function findFood() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(function(position) {
-                    var lat = position.coords.latitude;
-                    var lng = position.coords.longitude;
-                    // Здесь можно добавить код для запроса API OpenStreetMap
-                    // и обработки результатов.
-                    alert("Ищем ближайшие места с едой в вашем районе.");
-                }, function(error) {
-                    switch (error.code) {
-                        case error.PERMISSION_DENIED:
-                            alert("Пользователь отказался предоставить местоположение.");
-                            break;
-                        case error.POSITION_UNAVAILABLE:
-                            alert("Информация о местоположении недоступна.");
-                            break;
-                        case error.TIMEOUT:
-                            alert("Запрос на местоположение превысил время ожидания.");
-                            break;
-                        case error.UNKNOWN_ERROR:
-                            alert("Произошла неизвестная ошибка.");
-                            break;
-                    }
-                });
-            } else {
-                alert("Ваш браузер не поддерживает геолокацию.");
-            }
+        // Массив цветов для смены
+        const colors = ['blue', 'red', 'yellow', 'brown', 'green', 'black'];
+        
+        // Функция для получения данных из cookies
+        function getCookie(name) {
+            let matches = document.cookie.match(new RegExp(
+                "(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"
+            ));
+            return matches ? decodeURIComponent(matches[1]) : undefined;
         }
-    </script>
-</body>
-</html>
+        
+        // Функция для сохранения в cookies
+        function setCookie(name, value, days) {
+            let expires = "";
+            if (days) {
+                const date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            document.cookie = name + "=" + encodeURIComponent(value) + expires + "; path=/";
+        }
+        
+        // Загружаем состояние из cookies при загрузке страницы
+        const savedState = getCookie('gridState');
+        if (savedState) {
+            const state = JSON.parse(savedState);
+            Object.entries(state).forEach(([id, color]) => {
+                document.querySelector(`.grid-item[data-id="${id}"]`).style.backgroundColor = color;
+            });
+        }
+        
+        // Обработчик кликов по ячейкам
+        const gridItems = document.querySelectorAll('.grid-item');
+        gridItems.forEach(item => {
+            item.addEventListener('click', function() {
+                const currentColor = this.style.backgroundColor || 'transparent';
+                const currentIndex = colors.indexOf(currentColor);
+                const nextIndex = (currentIndex +
