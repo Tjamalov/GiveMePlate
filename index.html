@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Поиск кафе</title>
+    <title>Поиск мест питания</title>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700&display=swap" rel="stylesheet">
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -34,15 +34,23 @@
         #results { 
             margin-bottom: 20px;
         }
-        .cafe { 
+        .place { 
             margin-bottom: 15px;
             padding: 10px;
             background: rgba(255, 255, 255, 0.1);
             border-radius: 8px;
         }
-        .cafe.no-address {
+        .place.no-address {
             opacity: 0.7;
             background: rgba(255, 255, 255, 0.05);
+        }
+        .place-type {
+            display: inline-block;
+            padding: 2px 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-left: 8px;
         }
         .divider {
             height: 1px;
@@ -90,8 +98,8 @@
     </style>
 </head>
 <body>
-    <h1>Найти ближайшее кафе</h1>
-    <button id="findCafesBtn">Найти кафе</button>
+    <h1>Найти места питания</h1>
+    <button id="findPlacesBtn">Искать еду</button>
     <div id="results"></div>
     <div id="map"></div>
 
@@ -100,10 +108,21 @@
     <script>
         let map;
         let userMarker;
-        let cafeMarkers = [];
-        let allCafes = [];
+        let placeMarkers = [];
+        let allPlaces = [];
 
-        document.getElementById('findCafesBtn').addEventListener('click', async () => {
+        // Типы мест питания и их русские названия
+        const placeTypes = {
+            'cafe': 'Кафе',
+            'restaurant': 'Ресторан',
+            'fast_food': 'Фастфуд',
+            'bar': 'Бар',
+            'pub': 'Паб',
+            'bistro': 'Бистро',
+            'food_court': 'Фудкорт'
+        };
+
+        document.getElementById('findPlacesBtn').addEventListener('click', async () => {
             if (!navigator.geolocation) {
                 alert("Геолокация не поддерживается вашим браузером");
                 return;
@@ -113,7 +132,7 @@
             document.getElementById('results').innerHTML = `
                 <div class="loading">
                     <div class="loader"></div>
-                    <p>Ищем кафе поблизости...</p>
+                    <p>Ищем места питания поблизости...</p>
                 </div>
             `;
 
@@ -132,14 +151,14 @@
                     // Показываем карту после получения координат
                     document.getElementById('map').style.display = 'block';
 
-                    // Поиск кафе в радиусе 1 км
-                    allCafes = await findNearbyCafes(latitude, longitude, 1000);
+                    // Поиск мест питания в радиусе 1 км
+                    allPlaces = await findNearbyPlaces(latitude, longitude, 1000);
                     
                     // Очистка предыдущих маркеров
-                    clearCafeMarkers();
+                    clearPlaceMarkers();
 
                     // Отображение результатов
-                    displayCafes(allCafes);
+                    displayPlaces(allPlaces);
                 },
                 (error) => {
                     document.getElementById('results').innerHTML = `
@@ -167,13 +186,14 @@
             }).addTo(map).bindPopup("Ваше местоположение");
         }
 
-        // Поиск кафе через Overpass API
-        async function findNearbyCafes(lat, lon, radius = 1000) {
+        // Поиск мест питания через Overpass API
+        async function findNearbyPlaces(lat, lon, radius = 1000) {
+            const amenityTypes = ['cafe', 'restaurant', 'fast_food', 'bar', 'pub', 'bistro', 'food_court'].join('|');
             const url = `https://overpass-api.de/api/interpreter?data=
                 [out:json];
                 (
-                    node["amenity"="cafe"](around:${radius},${lat},${lon});
-                    way["amenity"="cafe"](around:${radius},${lat},${lon});
+                    node["amenity"~"${amenityTypes}"](around:${radius},${lat},${lon});
+                    way["amenity"~"${amenityTypes}"](around:${radius},${lat},${lon});
                 );
                 out body;
                 >;
@@ -187,7 +207,8 @@
                     lat: element.lat || element.center?.lat,
                     lon: element.lon || element.center?.lon,
                     distance: calculateDistance(lat, lon, element.lat || element.center?.lat, element.lon || element.center?.lon),
-                    hasAddress: !!(element.tags?.['addr:street'] || element.tags?.['addr:housenumber'])
+                    hasAddress: !!(element.tags?.['addr:street'] || element.tags?.['addr:housenumber']),
+                    type: element.tags?.amenity || 'unknown'
                 })).sort((a, b) => {
                     // Сначала сортируем по наличию адреса, затем по расстоянию
                     if (a.hasAddress && !b.hasAddress) return -1;
@@ -200,60 +221,45 @@
             }
         }
 
-        // Отображение списка кафе
-        function displayCafes(cafes) {
+        // Отображение списка мест
+        function displayPlaces(places) {
             const resultsDiv = document.getElementById('results');
             
-            if (cafes.length === 0) {
-                resultsDiv.innerHTML = "Кафе не найдено поблизости 😞";
+            if (places.length === 0) {
+                resultsDiv.innerHTML = "Места питания не найдены поблизости 😞";
                 return;
             }
 
-            // Разделяем кафе с адресом и без
-            const cafesWithAddress = cafes.filter(cafe => cafe.hasAddress);
-            const cafesWithoutAddress = cafes.filter(cafe => !cafe.hasAddress);
+            // Разделяем места с адресом и без
+            const placesWithAddress = places.filter(place => place.hasAddress);
+            const placesWithoutAddress = places.filter(place => !place.hasAddress);
 
             // Формируем HTML
-            let html = "<h3>Ближайшие кафе:</h3>";
+            let html = "<h3>Ближайшие места питания:</h3>";
 
-            // Показываем по 5 кафе каждого типа
-            const cafesToShow = [
-                ...cafesWithAddress.slice(0, 5),
-                ...cafesWithoutAddress.slice(0, 5)
-            ];
-
-            // Добавляем разделитель если есть оба типа
-            if (cafesWithAddress.length > 0 && cafesWithoutAddress.length > 0) {
-                html += `
-                    <div class="divider">
-                        <span class="divider-text">Кафе с адресом</span>
-                    </div>
-                `;
-            }
-
-            // Кафе с адресом
-            cafesWithAddress.slice(0, 5).forEach(cafe => {
-                html += createCafeHtml(cafe);
+            // Места с адресом (первые 5)
+            placesWithAddress.slice(0, 5).forEach(place => {
+                html += createPlaceHtml(place);
             });
 
-            // Кафе без адреса (если есть)
-            if (cafesWithoutAddress.length > 0) {
+            // Места без адреса (первые 5)
+            if (placesWithoutAddress.length > 0) {
                 html += `
                     <div class="divider">
-                        <span class="divider-text">Кафе без указанного адреса</span>
+                        <span class="divider-text">Без указанного адреса</span>
                     </div>
                 `;
                 
-                cafesWithoutAddress.slice(0, 5).forEach(cafe => {
-                    html += createCafeHtml(cafe, true);
+                placesWithoutAddress.slice(0, 5).forEach(place => {
+                    html += createPlaceHtml(place, true);
                 });
             }
 
-            // Добавляем кнопку "Показать всё" если кафе больше 10 (5+5)
-            if (cafes.length > 10) {
+            // Добавляем кнопку "Показать всё" если мест больше 10 (5+5)
+            if (places.length > 10) {
                 html += `
                     <div class="show-more">
-                        <button id="showAllBtn">Показать всё (${cafes.length})</button>
+                        <button id="showAllBtn">Показать всё (${places.length})</button>
                     </div>
                 `;
             }
@@ -264,26 +270,19 @@
             const showAllBtn = document.getElementById('showAllBtn');
             if (showAllBtn) {
                 showAllBtn.addEventListener('click', () => {
-                    let fullHtml = "<h3>Все кафе:</h3>";
+                    let fullHtml = "<h3>Все места питания:</h3>";
                     
-                    // Кафе с адресом
-                    if (cafesWithAddress.length > 0) {
-                        fullHtml += `
-                            <div class="divider">
-                                <span class="divider-text">Кафе с адресом</span>
-                            </div>
-                        `;
-                        fullHtml += cafesWithAddress.map(cafe => createCafeHtml(cafe)).join('');
-                    }
+                    // Места с адресом
+                    fullHtml += placesWithAddress.map(place => createPlaceHtml(place)).join('');
 
-                    // Кафе без адреса
-                    if (cafesWithoutAddress.length > 0) {
+                    // Места без адреса
+                    if (placesWithoutAddress.length > 0) {
                         fullHtml += `
                             <div class="divider">
-                                <span class="divider-text">Кафе без указанного адреса</span>
+                                <span class="divider-text">Без указанного адреса</span>
                             </div>
                         `;
-                        fullHtml += cafesWithoutAddress.map(cafe => createCafeHtml(cafe, true)).join('');
+                        fullHtml += placesWithoutAddress.map(place => createPlaceHtml(place, true)).join('');
                     }
 
                     resultsDiv.innerHTML = fullHtml;
@@ -291,39 +290,46 @@
             }
 
             // Добавляем маркеры на карту
-            cafes.forEach(cafe => {
-                if (cafe.lat && cafe.lon) {
-                    const marker = L.marker([cafe.lat, cafe.lon])
+            places.forEach(place => {
+                if (place.lat && place.lon) {
+                    const marker = L.marker([place.lat, place.lon])
                         .addTo(map)
-                        .bindPopup(`<b>${cafe.tags?.name || "Без названия"}</b><br>${getAddress(cafe) || 'Адрес не указан'}`);
-                    cafeMarkers.push(marker);
+                        .bindPopup(`
+                            <b>${place.tags?.name || "Без названия"}</b><br>
+                            <small>${placeTypes[place.type] || place.type}</small><br>
+                            ${getAddress(place) || 'Адрес не указан'}
+                        `);
+                    placeMarkers.push(marker);
                 }
             });
         }
 
-        // Создание HTML для одного кафе
-        function createCafeHtml(cafe, isNoAddress = false) {
-            const name = cafe.tags?.name || "Без названия";
-            const distance = Math.round(cafe.distance) + " м";
-            const address = getAddress(cafe);
+        // Создание HTML для одного места
+        function createPlaceHtml(place, isNoAddress = false) {
+            const name = place.tags?.name || "Без названия";
+            const distance = Math.round(place.distance) + " м";
+            const address = getAddress(place);
+            const type = placeTypes[place.type] || place.type;
             
             return `
-                <div class="cafe ${isNoAddress ? 'no-address' : ''}">
-                    <strong>${name}</strong> (${distance})<br>
+                <div class="place ${isNoAddress ? 'no-address' : ''}">
+                    <strong>${name}</strong>
+                    <span class="place-type">${type}</span>
+                    <div>${distance}</div>
                     ${address || 'Адрес не указан'}
                 </div>
             `;
         }
 
-        // Получение адреса из данных кафе
-        function getAddress(cafe) {
-            return [cafe.tags?.['addr:street'], cafe.tags?.['addr:housenumber']].filter(Boolean).join(' ');
+        // Получение адреса
+        function getAddress(place) {
+            return [place.tags?.['addr:street'], place.tags?.['addr:housenumber']].filter(Boolean).join(' ');
         }
 
-        // Очистка маркеров кафе
-        function clearCafeMarkers() {
-            cafeMarkers.forEach(marker => map.removeLayer(marker));
-            cafeMarkers = [];
+        // Очистка маркеров
+        function clearPlaceMarkers() {
+            placeMarkers.forEach(marker => map.removeLayer(marker));
+            placeMarkers = [];
         }
 
         // Расчёт расстояния
