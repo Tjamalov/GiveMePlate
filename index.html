@@ -24,12 +24,27 @@
             cursor: pointer; 
             margin-bottom: 20px;
         }
+        #map-container {
+            position: relative;
+        }
         #map { 
             height: 400px; 
             width: 100%;
             margin-top: 20px;
             border-radius: 16px;
             display: none;
+        }
+        #refresh-map {
+            position: absolute;
+            top: 30px;
+            right: 10px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
         }
         #results { 
             margin-bottom: 20px;
@@ -39,6 +54,11 @@
             padding: 10px;
             background: rgba(255, 255, 255, 0.1);
             border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .place:hover {
+            background: rgba(255, 255, 255, 0.2);
         }
         .place.no-address {
             opacity: 0.7;
@@ -95,13 +115,24 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        .highlighted {
+            animation: highlight 1.5s ease-in-out;
+        }
+        @keyframes highlight {
+            0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+        }
     </style>
 </head>
 <body>
     <h1>Найти места питания</h1>
     <button id="findPlacesBtn">Искать еду</button>
     <div id="results"></div>
-    <div id="map"></div>
+    <div id="map-container">
+        <div id="map"></div>
+        <button id="refresh-map" class="hidden">Обновить карту</button>
+    </div>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -110,6 +141,7 @@
         let userMarker;
         let placeMarkers = [];
         let allPlaces = [];
+        let highlightedMarker = null;
 
         // Типы мест питания и их русские названия
         const placeTypes = {
@@ -150,6 +182,7 @@
 
                     // Показываем карту после получения координат
                     document.getElementById('map').style.display = 'block';
+                    document.getElementById('refresh-map').classList.remove('hidden');
 
                     // Поиск мест питания в радиусе 1 км
                     const rawPlaces = await findNearbyPlaces(latitude, longitude, 1000);
@@ -181,11 +214,26 @@
             );
         });
 
+        // Кнопка обновления карты
+        document.getElementById('refresh-map').addEventListener('click', () => {
+            if (map) {
+                map.invalidateSize();
+                map.eachLayer(layer => {
+                    if (layer instanceof L.TileLayer) {
+                        layer.redraw();
+                    }
+                });
+                alert("Кэш карты обновлен");
+            }
+        });
+
         // Инициализация карты
         function initMap(lat, lon) {
             map = L.map('map').setView([lat, lon], 15);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 19,
+                detectRetina: true
             }).addTo(map);
             
             userMarker = L.marker([lat, lon], {
@@ -249,8 +297,8 @@
             let html = "<h3>Ближайшие места питания:</h3>";
 
             // Места с адресом (первые 5)
-            placesWithAddress.slice(0, 5).forEach(place => {
-                html += createPlaceHtml(place);
+            placesWithAddress.slice(0, 5).forEach((place, index) => {
+                html += createPlaceHtml(place, false, index);
             });
 
             // Места без адреса (первые 5)
@@ -261,8 +309,8 @@
                     </div>
                 `;
                 
-                placesWithoutAddress.slice(0, 5).forEach(place => {
-                    html += createPlaceHtml(place, true);
+                placesWithoutAddress.slice(0, 5).forEach((place, index) => {
+                    html += createPlaceHtml(place, true, placesWithAddress.length + index);
                 });
             }
 
@@ -284,7 +332,9 @@
                     let fullHtml = "<h3>Все места питания:</h3>";
                     
                     // Места с адресом
-                    fullHtml += placesWithAddress.map(place => createPlaceHtml(place)).join('');
+                    placesWithAddress.forEach((place, index) => {
+                        fullHtml += createPlaceHtml(place, false, index);
+                    });
 
                     // Места без адреса
                     if (placesWithoutAddress.length > 0) {
@@ -293,43 +343,89 @@
                                 <span class="divider-text">Без указанного адреса</span>
                             </div>
                         `;
-                        fullHtml += placesWithoutAddress.map(place => createPlaceHtml(place, true)).join('');
+                        placesWithoutAddress.forEach((place, index) => {
+                            fullHtml += createPlaceHtml(place, true, placesWithAddress.length + index);
+                        });
                     }
 
                     resultsDiv.innerHTML = fullHtml;
+                    addPlaceClickHandlers();
                 });
             }
 
             // Добавляем маркеры на карту
-            places.forEach(place => {
+            placeMarkers = places.map(place => {
                 if (place.lat && place.lon) {
-                    const marker = L.marker([place.lat, place.lon])
-                        .addTo(map)
-                        .bindPopup(`
-                            <b>${place.tags?.name || "Без названия"}</b><br>
-                            ${placeTypes[place.type] ? `<small>${placeTypes[place.type]}</small><br>` : ''}
-                            ${getAddress(place) || 'Адрес не указан'}
-                        `);
-                    placeMarkers.push(marker);
+                    const marker = L.marker([place.lat, place.lon], {
+                        riseOnHover: true
+                    }).addTo(map)
+                    .bindPopup(`
+                        <b>${place.tags?.name || "Без названия"}</b><br>
+                        ${placeTypes[place.type] ? `<small>${placeTypes[place.type]}</small><br>` : ''}
+                        ${getAddress(place) || 'Адрес не указан'}
+                    `);
+                    return marker;
                 }
-            });
+                return null;
+            }).filter(marker => marker !== null);
+
+            // Добавляем обработчики клика на места
+            addPlaceClickHandlers();
         }
 
         // Создание HTML для одного места
-        function createPlaceHtml(place, isNoAddress = false) {
+        function createPlaceHtml(place, isNoAddress = false, index) {
             const name = place.tags?.name || "Без названия";
             const distance = Math.round(place.distance) + " м";
             const address = getAddress(place);
             const type = placeTypes[place.type];
             
             return `
-                <div class="place ${isNoAddress ? 'no-address' : ''}">
+                <div class="place ${isNoAddress ? 'no-address' : ''}" data-index="${index}">
                     <strong>${name}</strong>
                     ${type ? `<span class="place-type">${type}</span>` : ''}
                     <div>${distance}</div>
                     ${address || 'Адрес не указан'}
                 </div>
             `;
+        }
+
+        // Добавление обработчиков клика на места
+        function addPlaceClickHandlers() {
+            document.querySelectorAll('.place').forEach(placeElement => {
+                placeElement.addEventListener('click', () => {
+                    const index = parseInt(placeElement.getAttribute('data-index'));
+                    const marker = placeMarkers[index];
+                    
+                    if (marker) {
+                        // Убираем предыдущее выделение
+                        if (highlightedMarker) {
+                            highlightedMarker.setZIndexOffset(0);
+                        }
+                        
+                        // Выделяем новый маркер
+                        marker.setZIndexOffset(1000);
+                        marker.openPopup();
+                        
+                        // Центрируем карту на маркере
+                        map.setView(marker.getLatLng(), 15);
+                        
+                        // Анимируем маркер
+                        marker.getElement().classList.add('highlighted');
+                        setTimeout(() => {
+                            marker.getElement().classList.remove('highlighted');
+                        }, 1500);
+                        
+                        // Сохраняем текущий выделенный маркер
+                        highlightedMarker = marker;
+                        
+                        // Прокручиваем к карте
+                        document.getElementById('map').scrollIntoView({
+                            behavior: 'smooth'
+                        });
+                    }
+                });
+            });
         }
 
         // Получение адреса
@@ -339,8 +435,11 @@
 
         // Очистка маркеров
         function clearPlaceMarkers() {
-            placeMarkers.forEach(marker => map.removeLayer(marker));
+            placeMarkers.forEach(marker => {
+                if (marker) map.removeLayer(marker);
+            });
             placeMarkers = [];
+            highlightedMarker = null;
         }
 
         // Расчёт расстояния
