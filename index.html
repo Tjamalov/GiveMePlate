@@ -152,7 +152,18 @@
                     document.getElementById('map').style.display = 'block';
 
                     // Поиск мест питания в радиусе 1 км
-                    allPlaces = await findNearbyPlaces(latitude, longitude, 1000);
+                    const rawPlaces = await findNearbyPlaces(latitude, longitude, 1000);
+                    
+                    // Фильтрация результатов
+                    allPlaces = rawPlaces.filter(place => {
+                        // Убираем места без названия
+                        if (!place.tags?.name || place.tags.name.trim() === "") return false;
+                        
+                        // Убираем места с неизвестной категорией
+                        if (!place.type || place.type === 'unknown') return false;
+                        
+                        return true;
+                    });
                     
                     // Очистка предыдущих маркеров
                     clearPlaceMarkers();
@@ -296,7 +307,7 @@
                         .addTo(map)
                         .bindPopup(`
                             <b>${place.tags?.name || "Без названия"}</b><br>
-                            <small>${placeTypes[place.type] || place.type}</small><br>
+                            ${placeTypes[place.type] ? `<small>${placeTypes[place.type]}</small><br>` : ''}
                             ${getAddress(place) || 'Адрес не указан'}
                         `);
                     placeMarkers.push(marker);
@@ -309,12 +320,12 @@
             const name = place.tags?.name || "Без названия";
             const distance = Math.round(place.distance) + " м";
             const address = getAddress(place);
-            const type = placeTypes[place.type] || place.type;
+            const type = placeTypes[place.type];
             
             return `
                 <div class="place ${isNoAddress ? 'no-address' : ''}">
                     <strong>${name}</strong>
-                    <span class="place-type">${type}</span>
+                    ${type ? `<span class="place-type">${type}</span>` : ''}
                     <div>${distance}</div>
                     ${address || 'Адрес не указан'}
                 </div>
