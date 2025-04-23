@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ищем еду версия Cursor</title>
+    <title>Поиск мест питания</title>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -140,14 +140,14 @@
     </style>
 </head>
 <body>
-    <h1>Ищем еду версия CURSOR</h1>
-    <button id="findPlacesBtn">Искать</button>
+    <h1>Найти места питания</h1>
+    <button id="findPlacesBtn">Искать еду</button>
     <div id="results"></div>
     <div id="map-container">
         <div id="map"></div>
         <button id="refresh-map">Обновить карту</button>
     </div>
-    <a href="index.html" class="footer-link">Назад к стабильной версии</a>
+    <a href="newest.html" class="footer-link">Новые места поблизости</a>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
@@ -238,6 +238,16 @@
                         iconSize: [30, 30]
                     })
                 }).addTo(this.map).bindPopup("Ваше местоположение");
+
+                // Обновляем карту после инициализации
+                setTimeout(() => {
+                    this.map.invalidateSize();
+                    this.map.eachLayer(layer => {
+                        if (layer instanceof L.TileLayer) {
+                            layer.redraw();
+                        }
+                    });
+                }, 100);
             }
 
             updateMapPosition(lat, lon) {
