@@ -2,109 +2,88 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Тетрадь в клеточку</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Найти еду</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
+            font-family: 'Manrope', sans-serif;
             margin: 0;
             padding: 0;
             display: flex;
-            flex-direction: column;
+            justify-content: center;
             align-items: center;
             height: 100vh;
-            background-color: #f0f0f0;
+            background-color: #f5f5f5;
         }
-
-        .grid-container {
-            width: 900px;
-            height: 900px;
-            display: grid;
-            grid-template-columns: repeat(300, 1fr);
-            grid-template-rows: repeat(300, 1fr);
-            gap: 1px;
-            background-color: white;
+        .container {
+            text-align: center;
+            max-width: 400px;
         }
-
-        .grid-item {
-            width: 3px;
-            height: 3px;
-            border: 1px solid #ccc;
-            cursor: pointer;
-        }
-
-        .btn-reset {
-            margin-top: 20px;
-            padding: 10px 20px;
+        button {
+            padding: 12px 24px;
             font-size: 16px;
-            cursor: pointer;
-            background-color: #007bff;
-            color: white;
+            color: #fff;
+            background-color: #333;
             border: none;
-            border-radius: 5px;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #555;
+        }
+        .map {
+            width: 100%;
+            height: 400px;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
-    <div class="grid-container"></div>
-    <button class="btn-reset">Сбросить</button>
+    <div class="container">
+        <h1>Найти ближайшую точку с едой</h1>
+        <button onclick="findFoodNearby()">Найти</button>
+        <div id="map" class="map"></div>
+        <p id="result"></p>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 
     <script>
-        // Создаем сетку 300x300
-        const gridContainer = document.querySelector('.grid-container');
-        const colors = ['blue', 'red', 'yellow', 'brown', 'green', 'black'];
-        const gridState = {};
+        function findFoodNearby() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
 
-        // Создаем элементы сетки
-        for (let i = 0; i < 300 * 300; i++) {
-            const item = document.createElement('div');
-            item.classList.add('grid-item');
-            item.dataset.id = i;
-            gridContainer.appendChild(item);
-        }
+                    document.getElementById('result').innerText = 'Идёт поиск...';
 
-        // Функция для получения данных из cookies
-        function getCookie(name) {
-            let matches = document.cookie.match(new RegExp(
-                "(?:^|; )" + name.replace(/(\.$?*|{}\(\)\\\\\/\+^)/g, '\\$1') + "=(^;*)"
-            ));
-            return matches ? decodeURIComponent(matches[1]) : undefined;
-        }
-
-        // Функция для сохранения в cookies
-        function setCookie(name, value, days) {
-            let expires = "";
-            if (days) {
-                const date = new Date();
-                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-                expires = "; expires=" + date.toUTCString();
+                    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            const address = data.address;
+                            const resultElement = document.getElementById('result');
+                            resultElement.innerText = `Ближайшее место: ${address.road || 'неизвестно'}, ${address.city || 'неизвестно'}`;
+                        });
+                }, function(error) {
+                    alert("Ошибка при получении местоположения");
+                });
+            } else {
+                alert("Гео-локация не поддерживается вашим браузером");
             }
-            document.cookie = name + "=" + encodeURIComponent(value) + expires + "; path=/";
         }
 
-        // Загружаем состояние из cookies
-        const savedState = getCookie('gridState');
-        if (savedState) {
-            gridState = JSON.parse(savedState);
-            Object.entries(gridState).forEach(([id, color]) => {
-                document.querySelector(`.grid-item[data-id="${id}"]`).style.backgroundColor = color;
-            });
-        }
+        document.addEventListener('DOMContentLoaded', function() {
+            const map = L.map('map').setView([51.505, -0.09], 13);
 
-        // Обработчик кликов
-        const gridItems = document.querySelectorAll('.grid-item');
-        gridItems.forEach(item => {
-            item.addEventListener('click', function() {
-                const id = this.dataset.id;
-                const currentColor = this.style.backgroundColor || 'transparent';
-                const currentIndex = colors.indexOf(currentColor);
-                const nextIndex = (currentIndex + 1) % colors.length;
-                this.style.backgroundColor = colors[nextIndex];
-                gridState[id] = colors[nextIndex];
-                setCookie('gridState', JSON.stringify(gridState), 365);
-            });
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
         });
-
-        // Обработчик сброса
-        document.querySelector('.btn-reset').addEventListener('click', () => {
-            gridItems.forEach(item => {
-                item.style.backgroundColor = 'transparent';
-            });
+    </script>
+</body>
+</html>
