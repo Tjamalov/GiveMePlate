@@ -1,0 +1,121 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Manrope', sans-serif;
+}
+
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #f5f5f5;
+    padding: 20px;
+}
+
+.container {
+    width: min(1280px, 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+#grid {
+    display: grid;
+    grid-template-columns: repeat(60, 1fr);
+    grid-template-rows: repeat(40, 1fr);
+    width: 100%;
+    aspect-ratio: 60/40;
+    max-width: 1280px;
+    border: 1px solid #ccc;
+    background-color: white;
+    margin-bottom: 20px;
+}
+
+.cell {
+    border: 1px solid #e0e0e0;
+    aspect-ratio: 1;
+    cursor: pointer;
+    transition: all 0.2s;
+    touch-action: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.75em;
+    background-color: white;
+    min-width: 0;
+    min-height: 0;
+}
+
+.cell.empty {
+    background-color: white;
+}
+
+.cell.tree {
+    background-color: #e8f5e9;
+}
+
+.cell.apple {
+    background-color: #ffebee;
+}
+
+.cell.building {
+    background-color: #e3f2fd;
+}
+
+.cell.construction {
+    background-color: #fff3e0;
+}
+
+.cell.prayer {
+    background-color: #f5f5f5;
+}
+
+.controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+}
+
+.controls button,
+.controls .file-input-label {
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background-color: #000;
+    color: white;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    margin: 0;
+}
+
+.controls button:hover,
+.controls .file-input-label:hover {
+    background-color: #333;
+}
+
+.controls button:active,
+.controls .file-input-label:active {
+    background-color: #666;
+}
+
+/* Add extra space between Share and Save buttons */
+#shareButton {
+    margin-right: 30px;
+}
+
+#loadFile {
+    display: none;
+}
