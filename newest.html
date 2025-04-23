@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nearby Places</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        #map {
+            width: 100%;
+            height: 600px;
+            margin-bottom: 20px;
+        }
+        .place {
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+            cursor: pointer;
+        }
+        .place:hover {
+            background-color: #f0f0f0;
+        }
+        .no-address {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Nearest Places</h1>
+    <div id="controls">
+        <input type="text" id="locationInput" placeholder="Enter your location or address">
+        <button onclick="getLocation()">Get Location</button>
+        <input type="text" id="searchInput" placeholder="Search for places">
+        <button onclick="searchPlaces()">Search</button>
+    </div>
+    <div id="map"></div>
+    <ul id="placesList"></ul>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        let map, marker;
+
+        function initMap() {
+            map = L.map('map').setView([51.505, -0.09], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            map.on('click', function(e) {
+                if (marker) {
+                    marker.remove();
+                }
+                marker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(map);
+                document.getElementById('locationInput').value = `${e.latlng.lat}, ${e.latlng.lng}`;
+            });
+        }
+
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    map.setView([position.coords.latitude, position.coords.longitude], 13);
+                    if (marker) {
+                        marker.remove();
+                    }
+                    marker = L.marker([position.coords.latitude, position.coords.longitude]).addTo(map);
+                    document.getElementById('locationInput').value = `${position.coords.latitude}, ${position.coords.longitude}`;
+                }, function(error) {
+                    alert("Error: " + error.message);
+                });
+            } else {
+                alert("Geolocation is not supported by this browser.");
+            }
+        }
+
+        async function fetchPlaces(location, searchQuery = '') {
+            // Используем Nominatim от OpenStreetMap для поиска мест
+            const url = `https://nominatim.openstreetmap.org/search?format=json&lat=${location.split(',')[0]}&lon=${location.split(',')[1]}&q=${searchQuery}`;
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok ' + response.statusText);
+                }
+                const data = await response.json();
+                return data.map(item => ({
+                    name: item.display_name,
+                    lat: item.lat,
+                    lon: item.lon
+                }));
+            } catch (error) {
+                console.error('Error fetching places:', error);
+                return [];
+            }
+        }
+
+        function displayPlaces(places) {
+            const placesList = document.getElementById('placesList');
+            placesList.innerHTML = '';
+            places.forEach(place => {
+                const li = document.createElement('li');
+                li.textContent = place.name;
+                li.onclick = function() {
+                    map
