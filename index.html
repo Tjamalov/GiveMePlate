@@ -29,9 +29,11 @@
             width: 100%;
             margin-top: 20px;
             border-radius: 16px;
+            display: none; /* Сначала скрываем карту */
         }
         #results { 
             margin-bottom: 20px;
+            min-height: 100px; /* Чтобы плейсхолдер не прыгал */
         }
         .cafe { 
             margin-bottom: 15px;
@@ -65,12 +67,38 @@
         .hidden {
             display: none;
         }
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            text-align: center;
+        }
+        .loader {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid #fff;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
     <h1>Найти ближайшее кафе</h1>
     <button id="findCafesBtn">Искать кафе в радиусе 1 км</button>
-    <div id="results"></div>
+    <div id="results">
+        <div class="loading">
+            <div class="loader"></div>
+            <p>Нажмите кнопку для поиска кафе</p>
+        </div>
+    </div>
     <div id="map"></div>
 
     <!-- Leaflet JS -->
@@ -87,6 +115,14 @@
                 return;
             }
 
+            // Показываем загрузку
+            document.getElementById('results').innerHTML = `
+                <div class="loading">
+                    <div class="loader"></div>
+                    <p>Ищем кафе поблизости...</p>
+                </div>
+            `;
+
             navigator.geolocation.getCurrentPosition(
                 async (position) => {
                     const { latitude, longitude } = position.coords;
@@ -99,6 +135,9 @@
                         userMarker.setLatLng([latitude, longitude]);
                     }
 
+                    // Показываем карту после получения координат
+                    document.getElementById('map').style.display = 'block';
+
                     // Поиск кафе
                     allCafes = await findNearbyCafes(latitude, longitude, 1000); // 1000 м = 1 км
                     
@@ -109,7 +148,11 @@
                     displayCafes(allCafes);
                 },
                 (error) => {
-                    alert("Ошибка геолокации: " + error.message);
+                    document.getElementById('results').innerHTML = `
+                        <div class="error">
+                            Ошибка геолокации: ${error.message}
+                        </div>
+                    `;
                 }
             );
         });
@@ -184,7 +227,7 @@
                 html += createCafeHtml(cafe);
             });
 
-            // Кафе без адреса (первые 5)
+            // Кафе без адреса (первые 3)
             if (cafesWithoutAddress.length > 0) {
                 html += `
                     <div class="divider">
@@ -192,13 +235,37 @@
                     </div>
                 `;
                 
-                cafesWithoutAddress.slice(0, 5).forEach(cafe => {
+                cafesWithoutAddress.slice(0, 3).forEach(cafe => {
                     html += createCafeHtml(cafe, true);
                 });
+
+                // Если есть скрытые кафе без адреса
+                if (cafesWithoutAddress.length > 3) {
+                    html += `
+                        <div class="show-more">
+                            <button class="show-more-btn" data-type="no-address">Показать ещё (${cafesWithoutAddress.length - 3})</button>
+                        </div>
+                        <div id="more-no-address" class="hidden">
+                            ${cafesWithoutAddress.slice(3).map(cafe => createCafeHtml(cafe, true)).join('')}
+                        </div>
+                    `;
+                }
             }
 
-            // Добавляем кнопку "Показать всё" если кафе больше 5
-            if (cafesWithAddress.length > 5 || cafesWithoutAddress.length > 5) {
+            // Если есть скрытые кафе с адресом
+            if (cafesWithAddress.length > 5) {
+                html += `
+                    <div class="show-more">
+                        <button class="show-more-btn" data-type="with-address">Показать ещё кафе с адресом (${cafesWithAddress.length - 5})</button>
+                    </div>
+                    <div id="more-with-address" class="hidden">
+                        ${cafesWithAddress.slice(5).map(cafe => createCafeHtml(cafe)).join('')}
+                    </div>
+                `;
+            }
+
+            // Общая кнопка "Показать всё"
+            if (cafes.length > 8) { // 5 с адресом + 3 без
                 html += `
                     <div class="show-more">
                         <button id="showAllBtn">Показать всё (${cafes.length})</button>
@@ -208,16 +275,25 @@
 
             resultsDiv.innerHTML = html;
 
-            // Добавляем обработчик для кнопки "Показать всё"
+            // Добавляем обработчики для кнопок
+            document.querySelectorAll('.show-more-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const type = e.target.getAttribute('data-type');
+                    const moreDiv = document.getElementById(`more-${type}`);
+                    moreDiv.classList.toggle('hidden');
+                    e.target.textContent = moreDiv.classList.contains('hidden') ? 
+                        `Показать ещё (${type === 'with-address' ? cafesWithAddress.length - 5 : cafesWithoutAddress.length - 3})` : 
+                        'Скрыть';
+                });
+            });
+
             const showAllBtn = document.getElementById('showAllBtn');
             if (showAllBtn) {
                 showAllBtn.addEventListener('click', () => {
                     let fullHtml = "<h3>Все кафе:</h3>";
                     
                     // Кафе с адресом (все)
-                    cafesWithAddress.forEach(cafe => {
-                        fullHtml += createCafeHtml(cafe);
-                    });
+                    fullHtml += cafesWithAddress.map(cafe => createCafeHtml(cafe)).join('');
 
                     // Кафе без адреса (все)
                     if (cafesWithoutAddress.length > 0) {
@@ -226,10 +302,7 @@
                                 <span class="divider-text">Кафе без указанного адреса</span>
                             </div>
                         `;
-                        
-                        cafesWithoutAddress.forEach(cafe => {
-                            fullHtml += createCafeHtml(cafe, true);
-                        });
+                        fullHtml += cafesWithoutAddress.map(cafe => createCafeHtml(cafe, true)).join('');
                     }
 
                     resultsDiv.innerHTML = fullHtml;
