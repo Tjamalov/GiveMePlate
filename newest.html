@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Поиск мест питания</title>
+    <title>Поиск мест</title>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -140,8 +140,8 @@
     </style>
 </head>
 <body>
-    <h1>Найти места питания</h1>
-    <button id="findPlacesBtn">Искать еду</button>
+    <h1>Найти места поблизости</h1>
+    <button id="findPlacesBtn">Искать места</button>
     <div id="results"></div>
     <div id="map-container">
         <div id="map"></div>
@@ -293,14 +293,14 @@
                 const resultsDiv = document.getElementById('results');
                 
                 if (this.allPlaces.length === 0) {
-                    resultsDiv.innerHTML = "Места питания не найдены поблизости 😞";
+                    resultsDiv.innerHTML = "Места не найдены поблизости 😞";
                     return;
                 }
 
                 const placesWithAddress = this.allPlaces.filter(place => place.hasAddress);
                 const placesWithoutAddress = this.allPlaces.filter(place => !place.hasAddress);
 
-                let html = "<h3>Ближайшие места питания:</h3>";
+                let html = "<h3>Ближайшие места:</h3>";
                 html += this.createPlacesHtml(placesWithAddress, 0);
                 
                 if (placesWithoutAddress.length > 0) {
@@ -408,7 +408,7 @@
 
             showAllPlaces() {
                 const resultsDiv = document.getElementById('results');
-                let html = "<h3>Все места питания:</h3>";
+                let html = "<h3>Все места:</h3>";
                 
                 const placesWithAddress = this.allPlaces.filter(place => place.hasAddress);
                 const placesWithoutAddress = this.allPlaces.filter(place => !place.hasAddress);
@@ -440,7 +440,7 @@
                 document.getElementById('results').innerHTML = `
                     <div class="loading">
                         <div class="loader"></div>
-                        <p>Ищем места питания поблизости...</p>
+                        <p>Ищем места поблизости...</p>
                     </div>
                 `;
             }
