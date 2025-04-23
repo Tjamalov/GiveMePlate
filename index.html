@@ -3,179 +3,179 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Геолокация</title>
+    <title>Поиск кафе</title>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body {
-            font-family: 'Manrope', sans-serif;
-            background-color: #000;
-            color: #fff;
+        body { 
+            font-family: 'Manrope', sans-serif; 
+            background: #000; 
+            color: #fff; 
             margin: 0;
             padding: 20px;
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
         }
-        
-        h1 {
-            font-size: 2.5rem;
-            margin-bottom: 30px;
-            font-weight: 700;
+        button { 
+            background: #fff; 
+            color: #000; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 16px; 
+            cursor: pointer; 
+            margin-bottom: 20px;
         }
-        
-        button {
-            background-color: #fff;
-            color: #000;
-            border: none;
-            padding: 15px 30px;
-            font-size: 1.2rem;
-            font-family: 'Manrope', sans-serif;
-            font-weight: 700;
+        #map { 
+            height: 400px; 
+            width: 100%;
+            margin-top: 20px;
             border-radius: 16px;
-            cursor: pointer;
-            margin-bottom: 30px;
-            transition: all 0.3s;
         }
-        
-        button:hover {
-            background-color: #ddd;
+        #results { 
+            margin-top: 20px; 
         }
-        
-        #locationText {
-            font-size: 1.2rem;
-            max-width: 80%;
-            line-height: 1.5;
-        }
-        
-        @media (max-width: 480px) {
-            h1 {
-                font-size: 2rem;
-            }
-            
-            button {
-                padding: 12px 25px;
-                font-size: 1rem;
-            }
-            
-            #locationText {
-                font-size: 1rem;
-            }
+        .cafe { 
+            margin-bottom: 15px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
         }
     </style>
 </head>
 <body>
-    <h1>Vibes</h1>
-    <button id="findMeBtn">Найти меня</button>
-    <div id="locationText">Нажмите кнопку, чтобы определить ваше местоположение</div>
+    <h1>Найти ближайшее кафе</h1>
+    <button id="findCafesBtn">Искать кафе в радиусе 1 км</button>
+    <div id="map"></div>
+    <div id="results"></div>
 
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Кэш для хранения координат и адреса
-        let locationCache = {
-            coords: null,
-            address: null
-        };
+        let map;
+        let userMarker;
+        let cafeMarkers = [];
 
-        document.getElementById('findMeBtn').addEventListener('click', function() {
-            // Проверяем кэш перед новым запросом
-            if (locationCache.address) {
-                document.getElementById('locationText').textContent = locationCache.address;
+        document.getElementById('findCafesBtn').addEventListener('click', async () => {
+            if (!navigator.geolocation) {
+                alert("Геолокация не поддерживается вашим браузером");
                 return;
             }
 
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    function(position) {
-                        const latitude = position.coords.latitude;
-                        const longitude = position.coords.longitude;
-                        
-                        // Проверяем, те же ли координаты в кэше
-                        if (locationCache.coords && 
-                            locationCache.coords.latitude === latitude && 
-                            locationCache.coords.longitude === longitude) {
-                            document.getElementById('locationText').textContent = locationCache.address;
-                            return;
-                        }
-
-                        // Сохраняем координаты в кэш
-                        locationCache.coords = { latitude, longitude };
-                        
-                        // Используем OpenStreetMap Nominatim API
-                        getAddressFromOSM(latitude, longitude);
-                    },
-                    function(error) {
-                        let errorMessage;
-                        switch(error.code) {
-                            case error.PERMISSION_DENIED:
-                                errorMessage = "Вы отказали в запросе геолокации";
-                                break;
-                            case error.POSITION_UNAVAILABLE:
-                                errorMessage = "Информация о местоположении недоступна";
-                                break;
-                            case error.TIMEOUT:
-                                errorMessage = "Время запроса геолокации истекло";
-                                break;
-                            case error.UNKNOWN_ERROR:
-                                errorMessage = "Произошла неизвестная ошибка";
-                                break;
-                        }
-                        document.getElementById('locationText').textContent = errorMessage;
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    const { latitude, longitude } = position.coords;
+                    
+                    // Инициализация карты (если ещё не создана)
+                    if (!map) {
+                        initMap(latitude, longitude);
+                    } else {
+                        map.setView([latitude, longitude], 15);
+                        userMarker.setLatLng([latitude, longitude]);
                     }
-                );
-            } else {
-                document.getElementById('locationText').textContent = "Геолокация не поддерживается вашим браузером";
-            }
+
+                    // Поиск кафе
+                    const cafes = await findNearbyCafes(latitude, longitude, 1000); // 1000 м = 1 км
+                    
+                    // Очистка предыдущих маркеров
+                    clearCafeMarkers();
+
+                    const resultsDiv = document.getElementById('results');
+                    if (cafes.length === 0) {
+                        resultsDiv.innerHTML = "Кафе не найдено в радиусе 1 км 😞";
+                        return;
+                    }
+
+                    // Вывод результатов
+                    resultsDiv.innerHTML = "<h3>Ближайшие кафе:</h3>";
+                    cafes.forEach(cafe => {
+                        const name = cafe.tags?.name || "Без названия";
+                        const distance = Math.round(cafe.distance) + " м";
+                        const address = [cafe.tags?.['addr:street'], cafe.tags?.['addr:housenumber']].filter(Boolean).join(' ');
+                        
+                        resultsDiv.innerHTML += `
+                            <div class="cafe">
+                                <strong>${name}</strong> (${distance})<br>
+                                ${address || 'Адрес не указан'}
+                            </div>
+                        `;
+
+                        // Добавление маркера на карту
+                        if (cafe.lat && cafe.lon) {
+                            const marker = L.marker([cafe.lat, cafe.lon])
+                                .addTo(map)
+                                .bindPopup(`<b>${name}</b><br>${address || ''}`);
+                            cafeMarkers.push(marker);
+                        }
+                    });
+                },
+                (error) => {
+                    alert("Ошибка геолокации: " + error.message);
+                }
+            );
         });
 
-        function getAddressFromOSM(latitude, longitude) {
-            document.getElementById('locationText').textContent = "Определяем адрес...";
+        // Инициализация карты
+        function initMap(lat, lon) {
+            map = L.map('map').setView([lat, lon], 15);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
             
-            // OpenStreetMap Nominatim API (без ключа)
-            const url = `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=ru&addressdetails=1`;
-            
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        throw new Error(data.error);
-                    }
-                    
-                    // Извлекаем только город, улицу и дом
-                    const address = parseOSMAddress(data.address);
-                    
-                    // Сохраняем адрес в кэш
-                    locationCache.address = address || "Адрес не определён";
-                    
-                    document.getElementById('locationText').textContent = locationCache.address;
+            userMarker = L.marker([lat, lon], {
+                icon: L.divIcon({
+                    className: 'user-marker',
+                    html: '📍',
+                    iconSize: [30, 30]
                 })
-                .catch(error => {
-                    console.error('Ошибка при запросе к OpenStreetMap:', error);
-                    document.getElementById('locationText').textContent = 
-                        `Координаты: ${latitude.toFixed(6)}, ${longitude.toFixed(6)} (адрес не получен)`;
-                });
+            }).addTo(map).bindPopup("Ваше местоположение");
         }
 
-        // Функция для извлечения города, улицы и номера дома
-        function parseOSMAddress(addressData) {
-            const address = addressData;
-            let result = [];
-            
-            // Город (проверяем несколько возможных полей)
-            const city = address.city || address.town || address.village || address.municipality;
-            if (city) result.push(city);
-            
-            // Улица
-            if (address.road) result.push(address.road);
-            
-            // Номер дома
-            if (address.house_number) result.push(address.house_number);
-            
-            // Если ничего не нашли, возвращаем полный адрес как fallback
-            return result.length > 0 
-                ? result.join(", ") 
-                : address.display_name || "Адрес не определён";
+        // Поиск кафе через Overpass API
+        async function findNearbyCafes(lat, lon, radius = 1000) {
+            const url = `https://overpass-api.de/api/interpreter?data=
+                [out:json];
+                (
+                    node["amenity"="cafe"](around:${radius},${lat},${lon});
+                    way["amenity"="cafe"](around:${radius},${lat},${lon});
+                );
+                out body;
+                >;
+                out skel qt;`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                return data.elements.map(element => ({
+                    ...element,
+                    lat: element.lat || element.center?.lat,
+                    lon: element.lon || element.center?.lon,
+                    distance: calculateDistance(lat, lon, element.lat || element.center?.lat, element.lon || element.center?.lon)
+                })).sort((a, b) => a.distance - b.distance);
+            } catch (error) {
+                console.error("Ошибка запроса:", error);
+                return [];
+            }
+        }
+
+        // Очистка маркеров кафе
+        function clearCafeMarkers() {
+            cafeMarkers.forEach(marker => map.removeLayer(marker));
+            cafeMarkers = [];
+        }
+
+        // Расчёт расстояния
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; // Радиус Земли в метрах
+            const φ1 = lat1 * Math.PI/180;
+            const φ2 = lat2 * Math.PI/180;
+            const Δφ = (lat2-lat1) * Math.PI/180;
+            const Δλ = (lon2-lon1) * Math.PI/180;
+
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+            return R * c;
         }
     </script>
 </body>
