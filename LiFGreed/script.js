@@ -190,6 +190,26 @@ document.getElementById('loadFile').addEventListener('change', (e) => {
     }
 });
 
-// Initialize the grid when the page loads
+function toggleTheme() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    const themeToggle = document.getElementById('themeToggle');
+    themeToggle.textContent = isDark ? '🌙' : '☀️';
+    localStorage.setItem('theme', isDark ? 'light' : 'dark');
+}
+
+// Initialize theme
+function initTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    const themeToggle = document.getElementById('themeToggle');
+    themeToggle.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+}
+
+// Add event listener for theme toggle
+document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+// Initialize the grid and theme when the page loads
 createGrid();
-loadStateFromUrl(); 
+loadStateFromUrl();
+initTheme(); 
