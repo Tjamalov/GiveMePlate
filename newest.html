@@ -8,33 +8,29 @@
             margin: 0;
             padding: 0;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
             height: 100vh;
             background-color: #f0f0f0;
         }
-        
+
         .grid-container {
             width: 900px;
             height: 900px;
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            grid-template-rows: repeat(3, 1fr);
+            grid-template-columns: repeat(300, 1fr);
+            grid-template-rows: repeat(300, 1fr);
             gap: 1px;
             background-color: white;
         }
-        
+
         .grid-item {
-            width: 300px;
-            height: 300px;
+            width: 3px;
+            height: 3px;
             border: 1px solid #ccc;
             cursor: pointer;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 24px;
         }
-        
+
         .btn-reset {
             margin-top: 20px;
             padding: 10px 20px;
@@ -48,33 +44,31 @@
     </style>
 </head>
 <body>
-    <div class="grid-container">
-        <!-- Создадим 9 элементов сетки -->
-        <div class="grid-item" data-id="1"></div>
-        <div class="grid-item" data-id="2"></div>
-        <div class="grid-item" data-id="3"></div>
-        <div class="grid-item" data-id="4"></div>
-        <div class="grid-item" data-id="5"></div>
-        <div class="grid-item" data-id="6"></div>
-        <div class="grid-item" data-id="7"></div>
-        <div class="grid-item" data-id="8"></div>
-        <div class="grid-item" data-id="9"></div>
-    </div>
-    
+    <div class="grid-container"></div>
     <button class="btn-reset">Сбросить</button>
 
     <script>
-        // Массив цветов для смены
+        // Создаем сетку 300x300
+        const gridContainer = document.querySelector('.grid-container');
         const colors = ['blue', 'red', 'yellow', 'brown', 'green', 'black'];
-        
+        const gridState = {};
+
+        // Создаем элементы сетки
+        for (let i = 0; i < 300 * 300; i++) {
+            const item = document.createElement('div');
+            item.classList.add('grid-item');
+            item.dataset.id = i;
+            gridContainer.appendChild(item);
+        }
+
         // Функция для получения данных из cookies
         function getCookie(name) {
             let matches = document.cookie.match(new RegExp(
-                "(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"
+                "(?:^|; )" + name.replace(/(\.$?*|{}\(\)\\\\\/\+^)/g, '\\$1') + "=(^;*)"
             ));
             return matches ? decodeURIComponent(matches[1]) : undefined;
         }
-        
+
         // Функция для сохранения в cookies
         function setCookie(name, value, days) {
             let expires = "";
@@ -85,20 +79,32 @@
             }
             document.cookie = name + "=" + encodeURIComponent(value) + expires + "; path=/";
         }
-        
-        // Загружаем состояние из cookies при загрузке страницы
+
+        // Загружаем состояние из cookies
         const savedState = getCookie('gridState');
         if (savedState) {
-            const state = JSON.parse(savedState);
-            Object.entries(state).forEach(([id, color]) => {
+            gridState = JSON.parse(savedState);
+            Object.entries(gridState).forEach(([id, color]) => {
                 document.querySelector(`.grid-item[data-id="${id}"]`).style.backgroundColor = color;
             });
         }
-        
-        // Обработчик кликов по ячейкам
+
+        // Обработчик кликов
         const gridItems = document.querySelectorAll('.grid-item');
         gridItems.forEach(item => {
             item.addEventListener('click', function() {
+                const id = this.dataset.id;
                 const currentColor = this.style.backgroundColor || 'transparent';
                 const currentIndex = colors.indexOf(currentColor);
-                const nextIndex = (currentIndex +
+                const nextIndex = (currentIndex + 1) % colors.length;
+                this.style.backgroundColor = colors[nextIndex];
+                gridState[id] = colors[nextIndex];
+                setCookie('gridState', JSON.stringify(gridState), 365);
+            });
+        });
+
+        // Обработчик сброса
+        document.querySelector('.btn-reset').addEventListener('click', () => {
+            gridItems.forEach(item => {
+                item.style.backgroundColor = 'transparent';
+            });
