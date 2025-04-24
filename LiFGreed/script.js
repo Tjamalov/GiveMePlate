@@ -157,10 +157,21 @@ function saveToFile() {
     const a = document.createElement('a');
     a.href = url;
     a.download = 'grid-notebook.json';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    
+    // Create a click event
+    const clickEvent = new MouseEvent('click', {
+        view: window,
+        bubbles: true,
+        cancelable: true
+    });
+    
+    // Dispatch the click event
+    a.dispatchEvent(clickEvent);
+    
+    // Clean up
+    setTimeout(() => {
+        URL.revokeObjectURL(url);
+    }, 100);
 }
 
 function loadFromFile(file) {
