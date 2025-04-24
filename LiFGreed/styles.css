@@ -267,3 +267,29 @@ body {
 [data-theme="dark"] .emoji-counter {
     background-color: var(--empty-cell-bg);
 }
+
+.version-link {
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+    background-color: var(--button-bg);
+    color: white;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    margin: 0;
+}
+
+.version-link:hover {
+    background-color: var(--button-hover);
+}
+
+.version-link:active {
+    background-color: var(--button-active);
+}
