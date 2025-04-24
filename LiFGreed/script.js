@@ -10,6 +10,8 @@ const ELEMENTS = [
 ];
 const STORAGE_KEY = 'gridState';
 
+let currentBrush = { emoji: '', name: 'empty' };
+
 function createGrid() {
     const grid = document.getElementById('grid');
     const savedState = localStorage.getItem(STORAGE_KEY);
@@ -20,20 +22,53 @@ function createGrid() {
     // Clear existing grid
     grid.innerHTML = '';
 
-    function changeCellElement(cell, index, reverse = false) {
-        const currentElementIndex = ELEMENTS.findIndex(el => cell.textContent === el.emoji);
-        let nextElementIndex;
-        if (reverse) {
-            nextElementIndex = (currentElementIndex - 1 + ELEMENTS.length) % ELEMENTS.length;
-        } else {
-            nextElementIndex = (currentElementIndex + 1) % ELEMENTS.length;
-        }
-        cell.textContent = ELEMENTS[nextElementIndex].emoji;
-        cell.className = `cell ${ELEMENTS[nextElementIndex].name}`;
-        gridState[index] = nextElementIndex;
+    function updateEmojiCounter() {
+        const counter = document.getElementById('emojiCounter');
+        counter.innerHTML = '';
+        
+        // Count emojis
+        const emojiCounts = {};
+        const cells = document.querySelectorAll('.cell');
+        cells.forEach(cell => {
+            const emoji = cell.textContent;
+            if (emoji && emoji !== '') {
+                emojiCounts[emoji] = (emojiCounts[emoji] || 0) + 1;
+            }
+        });
+
+        // Create counter items
+        Object.entries(emojiCounts).forEach(([emoji, count]) => {
+            const item = document.createElement('div');
+            item.className = 'emoji-counter-item';
+            item.innerHTML = `${emoji} = ${count}`;
+            counter.appendChild(item);
+        });
+    }
+
+    function changeCellElement(cell, index) {
+        cell.textContent = currentBrush.emoji;
+        cell.className = `cell ${currentBrush.name}`;
+        gridState[index] = ELEMENTS.findIndex(el => el.emoji === currentBrush.emoji);
         saveGridState(gridState);
         lastChangedCell = cell;
+        updateEmojiCounter();
     }
+
+    // Add brush selection functionality
+    const brushButtons = document.querySelectorAll('.brush-button');
+    brushButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            // Remove active class from all buttons
+            brushButtons.forEach(btn => btn.classList.remove('active'));
+            // Add active class to clicked button
+            button.classList.add('active');
+            // Update current brush
+            currentBrush = {
+                emoji: button.dataset.emoji,
+                name: button.dataset.name
+            };
+        });
+    });
 
     for (let i = 0; i < GRID_WIDTH * GRID_HEIGHT; i++) {
         const cell = document.createElement('div');
@@ -44,19 +79,14 @@ function createGrid() {
             e.preventDefault();
             if (e.button === 0) { // Left click
                 isMouseDown = true;
-                changeCellElement(cell, i, false);
-            } else if (e.button === 2) { // Right click
-                isMouseDown = true;
-                changeCellElement(cell, i, true);
+                changeCellElement(cell, i);
             }
         });
 
         cell.addEventListener('mouseenter', (e) => {
             if (isMouseDown && cell !== lastChangedCell) {
                 if (e.buttons === 1) { // Left button pressed
-                    changeCellElement(cell, i, false);
-                } else if (e.buttons === 2) { // Right button pressed
-                    changeCellElement(cell, i, true);
+                    changeCellElement(cell, i);
                 }
             }
         });
@@ -81,6 +111,9 @@ function createGrid() {
             e.preventDefault();
         }
     });
+
+    // Initialize emoji counter
+    updateEmojiCounter();
 }
 
 function saveGridState(state) {

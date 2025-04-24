@@ -11,7 +11,21 @@
 </head>
 <body>
     <div class="container">
-        <div id="grid"></div>
+        <div class="grid-container">
+            <div class="brush-selector">
+                <div class="brush-title">Brushes</div>
+                <div class="brush-buttons">
+                    <button class="brush-button active" data-emoji="" data-name="empty">Empty</button>
+                    <button class="brush-button" data-emoji="🌳" data-name="tree">🌳</button>
+                    <button class="brush-button" data-emoji="🍎" data-name="apple">🍎</button>
+                    <button class="brush-button" data-emoji="🏢" data-name="building">🏢</button>
+                    <button class="brush-button" data-emoji="🚧" data-name="construction">🚧</button>
+                    <button class="brush-button" data-emoji="🙏" data-name="prayer">🙏</button>
+                </div>
+            </div>
+            <div id="grid"></div>
+        </div>
+        <div id="emojiCounter" class="emoji-counter"></div>
         <div class="controls">
             <button id="resetButton">Reset Grid</button>
             <button id="shareButton">Share Link</button>
