@@ -37,124 +37,73 @@
 }
 
 body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f0f0;
+    min-height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
-    background-color: var(--bg-color);
-    padding: 20px;
-    transition: background-color 0.3s;
 }
 
 .container {
-    width: min(1280px, 100%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-}
-
-.grid-container {
-    display: flex;
-    gap: 20px;
-    width: 100%;
-}
-
-.left-panel {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    min-width: 120px;
-    background-color: var(--cell-bg);
-    padding: 10px;
-    border-radius: 4px;
-    border: 1px solid var(--grid-border);
-    transition: background-color 0.3s, border-color 0.3s;
-}
-
-[data-theme="dark"] .left-panel {
-    background-color: var(--empty-cell-bg);
+    padding: 20px;
 }
 
 #grid {
     display: grid;
-    grid-template-columns: repeat(60, 1fr);
-    grid-template-rows: repeat(40, 1fr);
-    width: 100%;
-    aspect-ratio: 60/40;
-    max-width: 1280px;
-    border: 1px solid var(--grid-border);
-    background-color: var(--cell-bg);
-    transition: background-color 0.3s, border-color 0.3s;
-    border-radius: 4px;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 2px;
+    background-color: #fff;
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .cell {
-    border: 1px solid var(--cell-border);
     aspect-ratio: 1;
-    cursor: pointer;
-    transition: all 0.3s;
-    touch-action: none;
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 0.75em;
-    background-color: var(--cell-bg);
-    min-width: 0;
-    min-height: 0;
-}
-
-.cell.empty, .cell.poop {
-    background-color: var(--empty-cell-bg);
-}
-
-.cell.tree {
-    background-color: var(--tree-bg);
-}
-
-.cell.apple {
-    background-color: var(--apple-bg);
-}
-
-.cell.building {
-    background-color: var(--building-bg);
-}
-
-.cell.construction {
-    background-color: var(--construction-bg);
-}
-
-.cell.prayer {
-    background-color: var(--prayer-bg);
-}
-
-.cell.numeric {
-    background-color: var(--button-bg);
-    color: white;
-    font-size: 12px;
-    font-family: monospace;
-    position: relative;
+    font-size: 24px;
     cursor: pointer;
-}
-
-.cell.numeric:hover::after {
-    content: attr(title);
-    position: absolute;
-    background-color: var(--button-bg);
-    color: white;
-    padding: 4px 8px;
+    background-color: #f8f8f8;
+    border: 1px solid #ddd;
     border-radius: 4px;
-    font-size: 14px;
-    z-index: 1000;
-    white-space: nowrap;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    pointer-events: none;
+    transition: background-color 0.2s;
 }
 
-[data-theme="dark"] .cell.numeric:hover::after {
-    background-color: var(--button-bg);
-    color: white;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+.cell:hover {
+    background-color: #e8e8e8;
+}
+
+#emoji-counters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.emoji-counter {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    background-color: #f8f8f8;
+    border-radius: 4px;
+}
+
+.emoji-counter span {
+    font-size: 18px;
+}
+
+.emoji-counter .count {
+    font-weight: bold;
 }
 
 .controls {
@@ -263,41 +212,6 @@ body {
     transform: scale(1.05);
 }
 
-.emoji-counter {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    padding: 10px;
-    background-color: transparent;
-    border: none;
-    border-radius: 4px;
-    transition: background-color 0.3s, border-color 0.3s;
-}
-
-.emoji-counter-item {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 5px 10px;
-    background-color: var(--button-bg);
-    color: white;
-    border-radius: 4px;
-    font-size: 14px;
-    transition: background-color 0.3s;
-}
-
-[data-theme="dark"] .emoji-counter-item {
-    background-color: var(--button-bg);
-}
-
-[data-theme="dark"] .brush-selector {
-    background-color: var(--empty-cell-bg);
-}
-
-[data-theme="dark"] .emoji-counter {
-    background-color: var(--empty-cell-bg);
-}
-
 .version-link {
     position: absolute;
     left: 0;
@@ -401,7 +315,6 @@ body {
 .grid-wrapper {
     position: relative;
     width: 100%;
-    aspect-ratio: 60/40;
 }
 
 .tooltip-layer {
