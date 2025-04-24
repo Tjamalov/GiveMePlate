@@ -2,6 +2,7 @@ const GRID_WIDTH = 60;
 const GRID_HEIGHT = 40;
 const ELEMENTS = [
     { emoji: '', name: 'empty' },
+    { emoji: '💩', name: 'poop' },
     { emoji: '🌳', name: 'tree' },
     { emoji: '🍎', name: 'apple' },
     { emoji: '🏢', name: 'building' },
@@ -10,7 +11,7 @@ const ELEMENTS = [
 ];
 const STORAGE_KEY = 'gridState';
 
-let currentBrush = { emoji: '', name: 'empty' };
+let currentBrush = { emoji: '💩', name: 'poop' };
 
 function createGrid() {
     const grid = document.getElementById('grid');
