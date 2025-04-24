@@ -8,6 +8,25 @@
 </head>
 <body>
     <div class="container">
+        <div class="controls">
+            <button id="resetButton">Очистить поле</button>
+            <button id="saveButton">Сохранить</button>
+            <button id="shareButton">Поделиться</button>
+            <input type="file" id="loadFile" accept=".json" style="display: none;">
+            <label for="loadFile" class="file-input-label">Загрузить</label>
+            <a href="v03/index.html" class="version-link">v0.3 →</a>
+            <button id="themeToggle">🌙</button>
+        </div>
+        <div class="brush-selector">
+            <div class="brush-buttons">
+                <button class="brush-button" data-emoji="🌳">🌳</button>
+                <button class="brush-button" data-emoji="🍎">🍎</button>
+                <button class="brush-button" data-emoji="🏠">🏠</button>
+                <button class="brush-button" data-emoji="🏗️">🏗️</button>
+                <button class="brush-button" data-emoji="💩">💩</button>
+                <button class="brush-button" data-emoji="🙏">🙏</button>
+            </div>
+        </div>
         <div id="grid"></div>
         <div id="emoji-counters"></div>
     </div>
