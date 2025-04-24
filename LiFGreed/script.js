@@ -317,6 +317,13 @@ numericInput.addEventListener('input', function(e) {
     }
     e.target.value = value;
     
+    // Validate input format
+    if (!/^\d{3}\.\d$/.test(value)) {
+        e.target.style.borderColor = 'red';
+    } else {
+        e.target.style.borderColor = '';
+    }
+    
     // Update active cell if numeric brush is selected
     if (currentBrush.name === 'numeric') {
         const activeCell = document.querySelector('.cell.active');
@@ -327,8 +334,47 @@ numericInput.addEventListener('input', function(e) {
     }
 });
 
-numericInput.addEventListener('click', function() {
-    currentBrush = { emoji: '📊', name: 'numeric' };
-    document.querySelectorAll('.brush-button').forEach(btn => btn.classList.remove('active'));
-    this.parentElement.classList.add('active');
+// Add cell editing functionality
+document.getElementById('grid').addEventListener('dblclick', function(e) {
+    const cell = e.target.closest('.cell');
+    if (cell && cell.classList.contains('numeric')) {
+        const currentValue = cell.textContent;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = currentValue;
+        input.className = 'cell-edit-input';
+        input.style.width = '100%';
+        input.style.height = '100%';
+        input.style.textAlign = 'center';
+        input.style.border = 'none';
+        input.style.background = 'transparent';
+        input.style.color = 'white';
+        input.style.fontFamily = 'monospace';
+        input.style.fontSize = '12px';
+        
+        cell.textContent = '';
+        cell.appendChild(input);
+        input.focus();
+        
+        function finishEditing() {
+            const newValue = input.value;
+            if (/^\d{3}\.\d$/.test(newValue)) {
+                cell.textContent = newValue;
+                cell.title = newValue;
+                const index = Array.from(cell.parentElement.children).indexOf(cell);
+                gridState[index] = ELEMENTS.findIndex(el => el.name === 'numeric');
+                saveGridState(gridState);
+            } else {
+                cell.textContent = currentValue;
+                cell.title = currentValue;
+            }
+        }
+        
+        input.addEventListener('blur', finishEditing);
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                finishEditing();
+            }
+        });
+    }
 }); 

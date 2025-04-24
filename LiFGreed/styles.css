@@ -133,6 +133,28 @@ body {
     color: white;
     font-size: 12px;
     font-family: monospace;
+    position: relative;
+    cursor: pointer;
+}
+
+.cell.numeric:hover::after {
+    content: attr(title);
+    position: absolute;
+    background-color: var(--button-bg);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 14px;
+    z-index: 1000;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+}
+
+[data-theme="dark"] .cell.numeric:hover::after {
+    background-color: var(--button-bg);
+    color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
 }
 
 .controls {
