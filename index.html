@@ -287,7 +287,14 @@
                         type: element.tags?.amenity || 'unknown'
                     }))
                     .filter(place => place.tags?.name?.trim() && place.type && place.type !== 'unknown' && place.lat && place.lon)
-                    .sort((a, b) => (a.hasAddress === b.hasAddress) ? a.distance - b.distance : (a.hasAddress ? -1 : 1));
+                    .sort((a, b) => {
+                        // Сначала сортируем по наличию адреса
+                        if (a.hasAddress !== b.hasAddress) {
+                            return a.hasAddress ? -1 : 1;
+                        }
+                        // Затем по расстоянию
+                        return a.distance - b.distance;
+                    });
             }
 
             displayResults() {
@@ -298,19 +305,11 @@
                     return;
                 }
 
-                const placesWithAddress = this.allPlaces.filter(place => place.hasAddress);
-                const placesWithoutAddress = this.allPlaces.filter(place => !place.hasAddress);
-
                 let html = "<h3>Ближайшие места:</h3>";
                 
-                // Показываем только первые 3 места с адресом
-                html += this.createPlacesHtml(placesWithAddress.slice(0, 3), 0);
+                // Показываем только первые 3 места из общего списка
+                html += this.createPlacesHtml(this.allPlaces.slice(0, 3), 0);
                 
-                if (placesWithoutAddress.length > 0) {
-                    html += this.createDividerHtml();
-                    html += this.createPlacesHtml(placesWithoutAddress.slice(0, 3), placesWithAddress.length, true);
-                }
-
                 // Показываем кнопку "Показать всё" если есть больше 3 мест
                 if (this.allPlaces.length > 3) {
                     html += this.createShowAllButton();
@@ -414,16 +413,9 @@
                 const resultsDiv = document.getElementById('results');
                 let html = "<h3>Все места:</h3>";
                 
-                const placesWithAddress = this.allPlaces.filter(place => place.hasAddress);
-                const placesWithoutAddress = this.allPlaces.filter(place => !place.hasAddress);
-
-                html += this.createPlacesHtml(placesWithAddress, 0);
+                // Показываем все места
+                html += this.createPlacesHtml(this.allPlaces, 0);
                 
-                if (placesWithoutAddress.length > 0) {
-                    html += this.createDividerHtml();
-                    html += this.createPlacesHtml(placesWithoutAddress, placesWithAddress.length, true);
-                }
-
                 resultsDiv.innerHTML = html;
                 this.addPlaceClickHandlers();
             }
