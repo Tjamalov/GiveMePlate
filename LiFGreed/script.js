@@ -17,7 +17,6 @@ function createGrid() {
     const savedState = localStorage.getItem(STORAGE_KEY);
     const gridState = savedState ? JSON.parse(savedState) : Array(GRID_WIDTH * GRID_HEIGHT).fill(0);
     let isMouseDown = false;
-    let lastChangedCell = null;
 
     // Clear existing grid
     grid.innerHTML = '';
@@ -50,7 +49,6 @@ function createGrid() {
         cell.className = `cell ${currentBrush.name}`;
         gridState[index] = ELEMENTS.findIndex(el => el.emoji === currentBrush.emoji);
         saveGridState(gridState);
-        lastChangedCell = cell;
         updateEmojiCounter();
     }
 
@@ -84,10 +82,8 @@ function createGrid() {
         });
 
         cell.addEventListener('mouseenter', (e) => {
-            if (isMouseDown && cell !== lastChangedCell) {
-                if (e.buttons === 1) { // Left button pressed
-                    changeCellElement(cell, i);
-                }
+            if (isMouseDown && e.buttons === 1) { // Left button pressed
+                changeCellElement(cell, i);
             }
         });
 
@@ -102,7 +98,6 @@ function createGrid() {
     // Add mouse event listeners to the document to handle mouse up outside the grid
     document.addEventListener('mouseup', () => {
         isMouseDown = false;
-        lastChangedCell = null;
     });
 
     // Prevent text selection while dragging
@@ -243,6 +238,6 @@ function initTheme() {
 document.getElementById('themeToggle').addEventListener('click', toggleTheme);
 
 // Initialize the grid and theme when the page loads
-createGrid();
+initTheme();
 loadStateFromUrl();
-initTheme(); 
+createGrid(); 

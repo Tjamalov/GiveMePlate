@@ -76,8 +76,8 @@ body {
     max-width: 1280px;
     border: 1px solid var(--grid-border);
     background-color: var(--cell-bg);
-    margin-bottom: 20px;
     transition: background-color 0.3s, border-color 0.3s;
+    border-radius: 4px;
 }
 
 .cell {
@@ -149,7 +149,6 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    white-space: nowrap;
     margin: 0;
 }
 
@@ -186,7 +185,7 @@ body {
 }
 
 [data-theme="dark"] .theme-toggle {
-    content: "☀️";
+    /* content property removed */
 }
 
 .brush-selector {
@@ -267,4 +266,12 @@ body {
 
 [data-theme="dark"] .emoji-counter-item {
     background-color: var(--button-bg);
+}
+
+[data-theme="dark"] .brush-selector {
+    background-color: var(--cell-bg);
+}
+
+[data-theme="dark"] .emoji-counter {
+    background-color: var(--cell-bg);
 }
