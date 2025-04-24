@@ -308,7 +308,8 @@
                 let html = "<h3>Ближайшие места:</h3>";
                 
                 // Показываем только первые 3 места из общего списка
-                html += this.createPlacesHtml(this.allPlaces.slice(0, 3), 0);
+                const visiblePlaces = this.allPlaces.slice(0, 3);
+                html += this.createPlacesHtml(visiblePlaces, 0);
                 
                 // Показываем кнопку "Показать всё" если есть больше 3 мест
                 if (this.allPlaces.length > 3) {
@@ -316,7 +317,7 @@
                 }
 
                 resultsDiv.innerHTML = html;
-                this.addPlaceMarkers();
+                this.addPlaceMarkers(visiblePlaces);
                 this.addPlaceClickHandlers();
             }
 
@@ -348,15 +349,15 @@
             createShowAllButton() {
                 return `
                     <div class="show-more">
-                        <button id="showAllBtn">Показать всё (${this.allPlaces.length})</button>
+                        <button id="showAllBtn" onclick="app.showAllPlaces()">Показать всё (${this.allPlaces.length})</button>
                     </div>
                 `;
             }
 
-            addPlaceMarkers() {
+            addPlaceMarkers(places = this.allPlaces) {
                 this.clearPlaceMarkers();
                 
-                this.placeMarkers = this.allPlaces.map(place => {
+                this.placeMarkers = places.map(place => {
                     const marker = L.marker([place.lat, place.lon], {
                         riseOnHover: true
                     }).addTo(this.map)
@@ -384,11 +385,6 @@
                         }
                     });
                 });
-
-                const showAllBtn = document.getElementById('showAllBtn');
-                if (showAllBtn) {
-                    showAllBtn.addEventListener('click', () => this.showAllPlaces());
-                }
             }
 
             highlightMarker(marker) {
@@ -414,9 +410,10 @@
                 let html = "<h3>Все места:</h3>";
                 
                 // Показываем все места
-                html += this.createPlacesHtml(this.allPlaces, 0);
+                html += this.allPlaces.map((place, index) => this.createPlaceHtml(place, index, !place.hasAddress)).join('');
                 
                 resultsDiv.innerHTML = html;
+                this.addPlaceMarkers(this.allPlaces);
                 this.addPlaceClickHandlers();
             }
 
