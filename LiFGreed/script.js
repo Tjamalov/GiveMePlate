@@ -50,10 +50,19 @@ function createGrid() {
         if (clear) {
             cell.textContent = '';
             cell.className = 'cell empty';
+            cell.title = ''; // Clear tooltip
             gridState[index] = 0; // 0 is the index of empty cell
         } else {
             cell.textContent = currentBrush.emoji;
             cell.className = `cell ${currentBrush.name}`;
+            if (currentBrush.name === 'tooltip') {
+                const tooltipValue = document.getElementById('tooltipValue').value;
+                if (tooltipValue && /^\d{3}\.\d$/.test(tooltipValue)) {
+                    cell.title = tooltipValue;
+                }
+            } else {
+                cell.title = ''; // Clear tooltip for non-tooltip cells
+            }
             gridState[index] = ELEMENTS.findIndex(el => el.emoji === currentBrush.emoji);
         }
         saveGridState(gridState);
@@ -284,17 +293,6 @@ document.getElementById('themeToggle').addEventListener('click', toggleTheme);
 initTheme();
 loadStateFromUrl();
 createGrid();
-
-function updateCell(cell) {
-    const element = ELEMENTS[currentBrush];
-    cell.className = 'cell';
-    if (element.name !== 'empty') {
-        cell.classList.add(element.name);
-        cell.textContent = element.emoji;
-    } else {
-        cell.textContent = '';
-    }
-}
 
 // Add event listener for tooltip input validation
 document.getElementById('tooltipValue').addEventListener('input', function(e) {

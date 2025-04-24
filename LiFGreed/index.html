@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grid Notebook</title>
+    <title>Grid Notebook v0.3</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="../styles.css">
 </head>
 <body>
     <div class="container">
@@ -21,8 +21,6 @@
                         <button class="brush-button" data-emoji="🏢" data-name="building">🏢</button>
                         <button class="brush-button" data-emoji="🚧" data-name="construction">🚧</button>
                         <button class="brush-button" data-emoji="🙏" data-name="prayer">🙏</button>
-                        <button class="brush-button" data-emoji="📊" data-name="tooltip">📊</button>
-                        <input type="text" id="tooltipValue" class="tooltip-input" placeholder="314.9" pattern="\d{3}\.\d" maxlength="5">
                     </div>
                 </div>
                 <div id="emojiCounter" class="emoji-counter"></div>
@@ -30,7 +28,7 @@
             <div id="grid"></div>
         </div>
         <div class="controls">
-            <a href="v03/index.html" class="version-link">v0.3 →</a>
+            <a href="03/index.html" class="version-link">← v0.3</a>
             <button id="resetButton">Reset Grid</button>
             <button id="shareButton">Share Link</button>
             <button id="saveButton">Save</button>
@@ -41,6 +39,6 @@
             <button id="themeToggle" class="theme-toggle">🌙</button>
         </div>
     </div>
-    <script src="script.js"></script>
+    <script src="../script.js"></script>
 </body>
 </html> 
