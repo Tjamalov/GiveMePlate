@@ -18,6 +18,15 @@
         h1 {
             margin-bottom: 20px;
         }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .button-group button {
+            margin-bottom: 0;
+        }
         button { 
             background: #fff; 
             color: #000; 
@@ -140,14 +149,18 @@
     </style>
 </head>
 <body>
-    <h1>Найти места поблизости</h1>
-    <button id="findPlacesBtn">Искать места</button>
+    <h1>Искать еду</h1>
+    <div class="button-group">
+        <button id="findPlacesBtn">Поиск</button>
+        <button id="luckyBtn">Мне повезёт</button>
+    </div>
     <div id="results"></div>
     <div id="map-container">
         <div id="map"></div>
         <button id="refresh-map">Обновить карту</button>
     </div>
-    <a href="index.html" class="footer-link"><Базовая версия></a>
+    <a href="index.html" class="footer-link">Стабильная версия</a>
+    <a href="/LiFGreed/index.html" class="footer-link">LiFGrid</a>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
@@ -161,7 +174,7 @@
             search: {
                 radius: 1000, // метров
                 placeTypes: ['cafe', 'restaurant', 'fast_food', 'bar', 'pub', 'bistro', 'food_court'],
-                maxResults: 5
+                maxResults: 3
             },
             placeTypes: {
                 'cafe': 'Кафе',
@@ -188,6 +201,7 @@
 
             initializeEventListeners() {
                 document.getElementById('findPlacesBtn').addEventListener('click', () => this.findPlaces());
+                document.getElementById('luckyBtn').addEventListener('click', () => this.findLuckyPlace());
                 document.getElementById('refresh-map').addEventListener('click', () => this.refreshMap());
             }
 
@@ -205,6 +219,25 @@
                     
                     this.initializeOrUpdateMap(latitude, longitude);
                     await this.searchPlaces(latitude, longitude);
+                } catch (error) {
+                    this.showError(error.message);
+                }
+            }
+
+            async findLuckyPlace() {
+                if (!navigator.geolocation) {
+                    this.showError("Геолокация не поддерживается вашим браузером");
+                    return;
+                }
+
+                this.showLoading();
+
+                try {
+                    const position = await this.getCurrentPosition();
+                    const { latitude, longitude } = position.coords;
+                    
+                    this.initializeOrUpdateMap(latitude, longitude);
+                    await this.searchLuckyPlace(latitude, longitude);
                 } catch (error) {
                     this.showError(error.message);
                 }
@@ -269,10 +302,33 @@
                 this.displayResults();
             }
 
-            buildOverpassQuery(lat, lon) {
+            async searchLuckyPlace(latitude, longitude) {
+                const query = this.buildOverpassQuery(latitude, longitude, 500); // Используем радиус 500 метров
+                const response = await fetch(`https://overpass-api.de/api/interpreter?data=${query}`);
+                const data = await response.json();
+
+                this.processPlaces(data, latitude, longitude);
+                
+                // Фильтруем места с адресом
+                const placesWithAddress = this.allPlaces.filter(place => place.hasAddress);
+                
+                if (placesWithAddress.length === 0) {
+                    this.showError("К сожалению, поблизости нет подходящих мест 😞");
+                    return;
+                }
+
+                // Выбираем случайное место
+                const randomIndex = Math.floor(Math.random() * placesWithAddress.length);
+                const luckyPlace = placesWithAddress[randomIndex];
+                
+                // Отображаем только одно выбранное место
+                this.displayLuckyPlace(luckyPlace);
+            }
+
+            buildOverpassQuery(lat, lon, radius = CONFIG.search.radius) {
                 const types = CONFIG.search.placeTypes.join('|');
-                return `[out:json];(node["amenity"~"${types}"](around:${CONFIG.search.radius},${lat},${lon});` +
-                       `way["amenity"~"${types}"](around:${CONFIG.search.radius},${lat},${lon}););out body;>;out skel qt;`;
+                return `[out:json];(node["amenity"~"${types}"](around:${radius},${lat},${lon});` +
+                       `way["amenity"~"${types}"](around:${radius},${lat},${lon}););out body;>;out skel qt;`;
             }
 
             processPlaces(data, userLat, userLon) {
@@ -285,8 +341,21 @@
                         hasAddress: !!(element.tags?.['addr:street'] || element.tags?.['addr:housenumber']),
                         type: element.tags?.amenity || 'unknown'
                     }))
-                    .filter(place => place.tags?.name?.trim() && place.type && place.type !== 'unknown' && place.lat && place.lon)
-                    .sort((a, b) => (a.hasAddress === b.hasAddress) ? a.distance - b.distance : (a.hasAddress ? -1 : 1));
+                    .filter(place => {
+                        // Проверяем, что место имеет название и координаты
+                        const hasBasicInfo = place.tags?.name?.trim() && place.lat && place.lon;
+                        // Проверяем, что тип места есть в нашем списке разрешенных типов
+                        const hasValidType = place.type && place.type !== 'unknown' && CONFIG.search.placeTypes.includes(place.type);
+                        return hasBasicInfo && hasValidType;
+                    })
+                    .sort((a, b) => {
+                        // Сначала сортируем по наличию адреса
+                        if (a.hasAddress !== b.hasAddress) {
+                            return a.hasAddress ? -1 : 1;
+                        }
+                        // Затем по расстоянию
+                        return a.distance - b.distance;
+                    });
             }
 
             displayResults() {
@@ -297,23 +366,19 @@
                     return;
                 }
 
-                const placesWithAddress = this.allPlaces.filter(place => place.hasAddress);
-                const placesWithoutAddress = this.allPlaces.filter(place => !place.hasAddress);
-
                 let html = "<h3>Ближайшие места:</h3>";
-                html += this.createPlacesHtml(placesWithAddress, 0);
                 
-                if (placesWithoutAddress.length > 0) {
-                    html += this.createDividerHtml();
-                    html += this.createPlacesHtml(placesWithoutAddress, placesWithAddress.length, true);
-                }
-
-                if (this.allPlaces.length > 10) {
+                // Показываем только первые 3 места из общего списка
+                const visiblePlaces = this.allPlaces.slice(0, 3);
+                html += this.createPlacesHtml(visiblePlaces, 0);
+                
+                // Показываем кнопку "Показать всё" если есть больше 3 мест
+                if (this.allPlaces.length > 3) {
                     html += this.createShowAllButton();
                 }
 
                 resultsDiv.innerHTML = html;
-                this.addPlaceMarkers();
+                this.addPlaceMarkers(visiblePlaces);
                 this.addPlaceClickHandlers();
             }
 
@@ -345,15 +410,15 @@
             createShowAllButton() {
                 return `
                     <div class="show-more">
-                        <button id="showAllBtn">Показать всё (${this.allPlaces.length})</button>
+                        <button id="showAllBtn" onclick="app.showAllPlaces()">Показать всё (${this.allPlaces.length})</button>
                     </div>
                 `;
             }
 
-            addPlaceMarkers() {
+            addPlaceMarkers(places = this.allPlaces) {
                 this.clearPlaceMarkers();
                 
-                this.placeMarkers = this.allPlaces.map(place => {
+                this.placeMarkers = places.map(place => {
                     const marker = L.marker([place.lat, place.lon], {
                         riseOnHover: true
                     }).addTo(this.map)
@@ -381,11 +446,6 @@
                         }
                     });
                 });
-
-                const showAllBtn = document.getElementById('showAllBtn');
-                if (showAllBtn) {
-                    showAllBtn.addEventListener('click', () => this.showAllPlaces());
-                }
             }
 
             highlightMarker(marker) {
@@ -410,17 +470,11 @@
                 const resultsDiv = document.getElementById('results');
                 let html = "<h3>Все места:</h3>";
                 
-                const placesWithAddress = this.allPlaces.filter(place => place.hasAddress);
-                const placesWithoutAddress = this.allPlaces.filter(place => !place.hasAddress);
-
-                html += this.createPlacesHtml(placesWithAddress, 0);
+                // Показываем все места
+                html += this.allPlaces.map((place, index) => this.createPlaceHtml(place, index, !place.hasAddress)).join('');
                 
-                if (placesWithoutAddress.length > 0) {
-                    html += this.createDividerHtml();
-                    html += this.createPlacesHtml(placesWithoutAddress, placesWithAddress.length, true);
-                }
-
                 resultsDiv.innerHTML = html;
+                this.addPlaceMarkers(this.allPlaces);
                 this.addPlaceClickHandlers();
             }
 
@@ -479,6 +533,24 @@
                 const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
                 return R * c;
+            }
+
+            displayLuckyPlace(place) {
+                const resultsDiv = document.getElementById('results');
+                resultsDiv.innerHTML = `
+                    <h3>Вам повезло! 🎉</h3>
+                    ${this.createPlaceHtml(place, 0)}
+                `;
+                
+                this.clearPlaceMarkers();
+                this.addPlaceMarkers([place]);
+                this.addPlaceClickHandlers();
+                
+                // Автоматически выделяем выбранное место
+                const marker = this.placeMarkers[0];
+                if (marker) {
+                    this.highlightMarker(marker);
+                }
             }
         }
 
