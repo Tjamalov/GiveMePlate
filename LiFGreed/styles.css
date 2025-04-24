@@ -37,73 +37,95 @@
 }
 
 body {
-    font-family: Arial, sans-serif;
-    background-color: #f0f0f0;
-    min-height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
+    min-height: 100vh;
+    background-color: var(--bg-color);
+    padding: 20px;
+    transition: background-color 0.3s;
 }
 
 .container {
+    width: min(1280px, 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.grid-container {
+    display: flex;
+    gap: 20px;
+    width: 100%;
+}
+
+.left-panel {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    padding: 20px;
+    min-width: 120px;
+    background-color: var(--cell-bg);
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid var(--grid-border);
+    transition: background-color 0.3s, border-color 0.3s;
+}
+
+[data-theme="dark"] .left-panel {
+    background-color: var(--empty-cell-bg);
 }
 
 #grid {
     display: grid;
-    grid-template-columns: repeat(10, 1fr);
-    gap: 2px;
-    background-color: #fff;
-    padding: 10px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    grid-template-columns: repeat(60, 1fr);
+    grid-template-rows: repeat(40, 1fr);
+    width: 100%;
+    aspect-ratio: 60/40;
+    max-width: 1280px;
+    border: 1px solid var(--grid-border);
+    background-color: var(--cell-bg);
+    transition: background-color 0.3s, border-color 0.3s;
+    border-radius: 4px;
 }
 
 .cell {
+    border: 1px solid var(--cell-border);
     aspect-ratio: 1;
+    cursor: pointer;
+    transition: all 0.3s;
+    touch-action: none;
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 24px;
-    cursor: pointer;
-    background-color: #f8f8f8;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    transition: background-color 0.2s;
+    font-size: 0.75em;
+    background-color: var(--cell-bg);
+    min-width: 0;
+    min-height: 0;
 }
 
-.cell:hover {
-    background-color: #e8e8e8;
+.cell.empty, .cell.poop {
+    background-color: var(--empty-cell-bg);
 }
 
-#emoji-counters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    padding: 10px;
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.cell.tree {
+    background-color: var(--tree-bg);
 }
 
-.emoji-counter {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 5px 10px;
-    background-color: #f8f8f8;
-    border-radius: 4px;
+.cell.apple {
+    background-color: var(--apple-bg);
 }
 
-.emoji-counter span {
-    font-size: 18px;
+.cell.building {
+    background-color: var(--building-bg);
 }
 
-.emoji-counter .count {
-    font-weight: bold;
+.cell.construction {
+    background-color: var(--construction-bg);
+}
+
+.cell.prayer {
+    background-color: var(--prayer-bg);
 }
 
 .controls {
@@ -168,8 +190,7 @@ body {
 }
 
 [data-theme="dark"] .theme-toggle {
-    background-color: var(--button-bg);
-    color: white;
+    /* content property removed */
 }
 
 .brush-selector {
@@ -212,152 +233,37 @@ body {
     transform: scale(1.05);
 }
 
-.version-link {
-    position: absolute;
-    left: 0;
-    padding: 12px 24px;
-    font-size: 14px;
-    font-weight: 500;
+.emoji-counter {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 10px;
+    background-color: transparent;
     border: none;
     border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.3s;
-    background-color: var(--button-bg);
-    color: white;
-    height: 40px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none;
-    margin: 0;
+    transition: background-color 0.3s, border-color 0.3s;
 }
 
-.version-link:hover {
-    background-color: var(--button-hover);
-}
-
-.version-link:active {
-    background-color: var(--button-active);
-}
-
-.tooltip-input {
-    width: 100%;
-    padding: 4px;
-    margin-top: 4px;
-    border: 1px solid var(--cell-border);
-    border-radius: 4px;
-    background-color: var(--cell-bg);
-    color: var(--text-color);
-    font-size: 12px;
-    text-align: center;
-}
-
-.tooltip-input:focus {
-    outline: none;
-    border-color: var(--button-bg);
-}
-
-[data-theme="dark"] .tooltip-input {
-    background-color: var(--empty-cell-bg);
-    color: var(--text-color);
-    border-color: var(--cell-border);
-}
-
-.numeric-input-container {
-    padding: 0 !important;
-    background-color: transparent !important;
-}
-
-.numeric-input {
-    width: 100%;
-    padding: 8px;
-    border: none;
-    border-radius: 4px;
-    background-color: var(--button-bg);
-    color: white;
-    text-align: center;
-    font-size: 14px;
-    transition: all 0.3s;
-    font-family: monospace;
-}
-
-.numeric-input:focus {
-    outline: none;
-    background-color: var(--button-hover);
-}
-
-.numeric-input::placeholder {
-    color: rgba(255, 255, 255, 0.5);
-}
-
-[data-theme="dark"] .numeric-input {
-    background-color: var(--button-bg);
-    color: white;
-    border: 1px solid var(--cell-border);
-}
-
-[data-theme="dark"] .numeric-input:focus {
-    background-color: var(--button-hover);
-    border-color: var(--button-hover);
-}
-
-[data-theme="light"] .numeric-input {
-    background-color: var(--button-bg);
-    color: white;
-    border: 1px solid var(--cell-border);
-}
-
-[data-theme="light"] .numeric-input:focus {
-    background-color: var(--button-hover);
-    border-color: var(--button-hover);
-}
-
-.grid-wrapper {
-    position: relative;
-    width: 100%;
-}
-
-.tooltip-layer {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 1;
-}
-
-.tooltip-element {
-    position: absolute;
-    width: 100%;
-    height: 100%;
+.emoji-counter-item {
     display: flex;
     align-items: center;
-    justify-content: center;
-    font-family: monospace;
-    font-size: 12px;
-    color: white;
-    cursor: pointer;
-    pointer-events: auto;
-    transition: all 0.2s;
-}
-
-.tooltip-element:hover::after {
-    content: attr(data-value);
-    position: absolute;
+    gap: 5px;
+    padding: 5px 10px;
     background-color: var(--button-bg);
     color: white;
-    padding: 4px 8px;
     border-radius: 4px;
     font-size: 14px;
-    z-index: 1000;
-    white-space: nowrap;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    pointer-events: none;
+    transition: background-color 0.3s;
 }
 
-[data-theme="dark"] .tooltip-element:hover::after {
+[data-theme="dark"] .emoji-counter-item {
     background-color: var(--button-bg);
-    color: white;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .brush-selector {
+    background-color: var(--empty-cell-bg);
+}
+
+[data-theme="dark"] .emoji-counter {
+    background-color: var(--empty-cell-bg);
 }
