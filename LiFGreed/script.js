@@ -150,28 +150,45 @@ function loadGridState(state) {
     saveGridState(state);
 }
 
-function saveToFile() {
-    const state = getCurrentGridState();
-    const blob = new Blob([JSON.stringify(state)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'grid-notebook.json';
-    
-    // Create a click event
-    const clickEvent = new MouseEvent('click', {
-        view: window,
-        bubbles: true,
-        cancelable: true
-    });
-    
-    // Dispatch the click event
-    a.dispatchEvent(clickEvent);
-    
-    // Clean up
-    setTimeout(() => {
-        URL.revokeObjectURL(url);
-    }, 100);
+async function saveToFile() {
+    try {
+        const state = getCurrentGridState();
+        const blob = new Blob([JSON.stringify(state)], { type: 'application/json' });
+        
+        // Try to use the File System Access API
+        if ('showSaveFilePicker' in window) {
+            const options = {
+                types: [{
+                    description: 'JSON Files',
+                    accept: {
+                        'application/json': ['.json']
+                    }
+                }],
+                suggestedName: 'grid-notebook.json'
+            };
+            
+            const handle = await window.showSaveFilePicker(options);
+            const writable = await handle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+        } else {
+            // Fallback for browsers that don't support File System Access API
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'grid-notebook.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    } catch (err) {
+        console.error('Error saving file:', err);
+        // If user cancels the save dialog, we don't need to show an error
+        if (err.name !== 'AbortError') {
+            alert('Error saving file. Please try again.');
+        }
+    }
 }
 
 function loadFromFile(file) {
