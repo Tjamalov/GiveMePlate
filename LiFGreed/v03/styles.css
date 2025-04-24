@@ -80,6 +80,8 @@ body {
     position: relative;
     width: 100%;
     aspect-ratio: 60/40;
+    min-height: 0;
+    min-width: 0;
 }
 
 #grid {
@@ -87,12 +89,14 @@ body {
     grid-template-columns: repeat(60, 1fr);
     grid-template-rows: repeat(40, 1fr);
     width: 100%;
-    aspect-ratio: 60/40;
+    height: 100%;
     max-width: 1280px;
     border: 1px solid var(--grid-border);
     background-color: var(--cell-bg);
     transition: background-color 0.3s, border-color 0.3s;
     border-radius: 4px;
+    min-height: 0;
+    min-width: 0;
 }
 
 .cell {
@@ -108,6 +112,7 @@ body {
     background-color: var(--cell-bg);
     min-width: 0;
     min-height: 0;
+    overflow: hidden;
 }
 
 .cell.empty, .cell.poop {
@@ -157,6 +162,8 @@ body {
     cursor: pointer;
     pointer-events: auto;
     transition: all 0.2s;
+    z-index: 2;
+    background-color: transparent;
 }
 
 .tooltip-element:hover::after {
@@ -404,6 +411,10 @@ body {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    padding: 8px;
+    background-color: var(--button-bg);
+    border-radius: 4px;
+    transition: background-color 0.3s;
 }
 
 .level-button {
@@ -411,7 +422,7 @@ body {
     padding: 8px;
     border: none;
     border-radius: 4px;
-    background-color: var(--button-bg);
+    background-color: transparent;
     color: white;
     font-size: 14px;
     font-weight: 500;
@@ -429,18 +440,68 @@ body {
     transform: scale(1.02);
 }
 
-[data-theme="dark"] .level-button {
-    background-color: var(--button-bg);
+.numeric-input {
+    width: 100%;
+    padding: 8px;
+    border: none;
+    border-radius: 4px;
+    background-color: transparent;
     color: white;
+    text-align: center;
+    font-size: 14px;
+    transition: all 0.3s;
+    font-family: monospace;
+}
+
+.numeric-input:focus {
+    outline: none;
+    background-color: var(--button-hover);
+}
+
+.numeric-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="dark"] .level-controls {
+    background-color: var(--button-bg);
     border: 1px solid var(--cell-border);
+}
+
+[data-theme="dark"] .level-button {
+    background-color: transparent;
+    color: white;
 }
 
 [data-theme="dark"] .level-button:hover {
     background-color: var(--button-hover);
-    border-color: var(--button-hover);
 }
 
 [data-theme="dark"] .level-button.active {
     background-color: var(--button-active);
-    border-color: var(--button-active);
+}
+
+[data-theme="dark"] .numeric-input {
+    background-color: transparent;
+    color: white;
+    border: 1px solid var(--cell-border);
+}
+
+[data-theme="dark"] .numeric-input:focus {
+    background-color: var(--button-hover);
+    border-color: var(--button-hover);
+}
+
+[data-theme="light"] .level-controls {
+    background-color: var(--button-bg);
+}
+
+[data-theme="light"] .numeric-input {
+    background-color: transparent;
+    color: white;
+    border: 1px solid var(--cell-border);
+}
+
+[data-theme="light"] .numeric-input:focus {
+    background-color: var(--button-hover);
+    border-color: var(--button-hover);
 } 
