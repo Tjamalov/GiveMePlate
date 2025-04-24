@@ -269,9 +269,9 @@ body {
 }
 
 [data-theme="dark"] .brush-selector {
-    background-color: var(--cell-bg);
+    background-color: var(--empty-cell-bg);
 }
 
 [data-theme="dark"] .emoji-counter {
-    background-color: var(--cell-bg);
+    background-color: var(--empty-cell-bg);
 }
