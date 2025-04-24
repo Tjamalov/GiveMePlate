@@ -208,19 +208,6 @@ body {
     transition: background-color 0.3s, border-color 0.3s;
 }
 
-.brush-title {
-    font-weight: 600;
-    text-align: center;
-    padding-bottom: 5px;
-    border-bottom: 1px solid var(--grid-border);
-    color: var(--button-bg);
-    transition: color 0.3s, border-color 0.3s;
-}
-
-[data-theme="dark"] .brush-title {
-    color: white;
-}
-
 .brush-buttons {
     display: flex;
     flex-direction: column;

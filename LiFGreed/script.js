@@ -39,15 +39,21 @@ function createGrid() {
         Object.entries(emojiCounts).forEach(([emoji, count]) => {
             const item = document.createElement('div');
             item.className = 'emoji-counter-item';
-            item.innerHTML = `${emoji} = ${count}`;
+            item.innerHTML = `${emoji} ${count}`;
             counter.appendChild(item);
         });
     }
 
-    function changeCellElement(cell, index) {
-        cell.textContent = currentBrush.emoji;
-        cell.className = `cell ${currentBrush.name}`;
-        gridState[index] = ELEMENTS.findIndex(el => el.emoji === currentBrush.emoji);
+    function changeCellElement(cell, index, clear = false) {
+        if (clear) {
+            cell.textContent = '';
+            cell.className = 'cell empty';
+            gridState[index] = 0; // 0 is the index of empty cell
+        } else {
+            cell.textContent = currentBrush.emoji;
+            cell.className = `cell ${currentBrush.name}`;
+            gridState[index] = ELEMENTS.findIndex(el => el.emoji === currentBrush.emoji);
+        }
         saveGridState(gridState);
         updateEmojiCounter();
     }
@@ -78,12 +84,19 @@ function createGrid() {
             if (e.button === 0) { // Left click
                 isMouseDown = true;
                 changeCellElement(cell, i);
+            } else if (e.button === 2) { // Right click
+                isMouseDown = true;
+                changeCellElement(cell, i, true);
             }
         });
 
         cell.addEventListener('mouseenter', (e) => {
-            if (isMouseDown && e.buttons === 1) { // Left button pressed
-                changeCellElement(cell, i);
+            if (isMouseDown) {
+                if (e.buttons === 1) { // Left button pressed
+                    changeCellElement(cell, i);
+                } else if (e.buttons === 2) { // Right button pressed
+                    changeCellElement(cell, i, true);
+                }
             }
         });
 
