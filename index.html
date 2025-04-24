@@ -140,8 +140,8 @@
     </style>
 </head>
 <body>
-    <h1>Найти места поблизости</h1>
-    <button id="findPlacesBtn">Искать места</button>
+    <h1>Искать еду</h1>
+    <button id="findPlacesBtn">Поиск</button>
     <div id="results"></div>
     <div id="map-container">
         <div id="map"></div>
@@ -162,7 +162,7 @@
             search: {
                 radius: 1000, // метров
                 placeTypes: ['cafe', 'restaurant', 'fast_food', 'bar', 'pub', 'bistro', 'food_court'],
-                maxResults: 5
+                maxResults: 3
             },
             placeTypes: {
                 'cafe': 'Кафе',
@@ -302,14 +302,17 @@
                 const placesWithoutAddress = this.allPlaces.filter(place => !place.hasAddress);
 
                 let html = "<h3>Ближайшие места:</h3>";
-                html += this.createPlacesHtml(placesWithAddress, 0);
+                
+                // Показываем только первые 3 места с адресом
+                html += this.createPlacesHtml(placesWithAddress.slice(0, 3), 0);
                 
                 if (placesWithoutAddress.length > 0) {
                     html += this.createDividerHtml();
-                    html += this.createPlacesHtml(placesWithoutAddress, placesWithAddress.length, true);
+                    html += this.createPlacesHtml(placesWithoutAddress.slice(0, 3), placesWithAddress.length, true);
                 }
 
-                if (this.allPlaces.length > 10) {
+                // Показываем кнопку "Показать всё" если есть больше 3 мест
+                if (this.allPlaces.length > 3) {
                     html += this.createShowAllButton();
                 }
 
