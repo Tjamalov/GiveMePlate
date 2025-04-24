@@ -13,7 +13,6 @@
     --cell-bg: #f0f0f0;
     --cell-border: #e0e0e0;
     --grid-border: #ccc;
-    --poop-bg: #d2b48c;
     --tree-bg: #e8f5e9;
     --apple-bg: #ffebee;
     --building-bg: #e3f2fd;
@@ -30,7 +29,6 @@
     --empty-cell-bg: #2d2d2d;
     --cell-border: #404040;
     --grid-border: #505050;
-    --poop-bg: #8b7355;
     --tree-bg: #1a2a1a;
     --apple-bg: #2a1a1a;
     --building-bg: #1a1a2a;
@@ -106,11 +104,7 @@ body {
     min-height: 0;
 }
 
-.cell.empty {
-    background-color: var(--cell-bg);
-}
-
-[data-theme="dark"] .cell.empty {
+.cell.empty, .cell.poop {
     background-color: var(--empty-cell-bg);
 }
 
@@ -132,10 +126,6 @@ body {
 
 .cell.prayer {
     background-color: var(--prayer-bg);
-}
-
-.cell.poop {
-    background-color: var(--poop-bg);
 }
 
 .controls {
