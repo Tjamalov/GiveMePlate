@@ -8,7 +8,7 @@ const ELEMENTS = [
     { emoji: '🏢', name: 'building' },
     { emoji: '🚧', name: 'construction' },
     { emoji: '🙏', name: 'prayer' },
-    { emoji: '📊', name: 'tooltip' }
+    { emoji: '📊', name: 'numeric' }
 ];
 const STORAGE_KEY = 'gridState';
 
@@ -53,17 +53,23 @@ function createGrid() {
             cell.title = ''; // Clear tooltip
             gridState[index] = 0; // 0 is the index of empty cell
         } else {
-            cell.textContent = currentBrush.emoji;
-            cell.className = `cell ${currentBrush.name}`;
-            if (currentBrush.name === 'tooltip') {
-                const tooltipValue = document.getElementById('tooltipValue').value;
-                if (tooltipValue && /^\d{3}\.\d$/.test(tooltipValue)) {
-                    cell.title = tooltipValue;
+            if (currentBrush.name === 'numeric') {
+                const value = numericInput.value;
+                if (value && /^\d{3}\.\d$/.test(value)) {
+                    cell.textContent = value;
+                    cell.className = 'cell numeric';
+                    cell.title = value;
+                    gridState[index] = ELEMENTS.findIndex(el => el.name === 'numeric');
+                } else {
+                    // If value is not in correct format, don't change the cell
+                    return;
                 }
             } else {
-                cell.title = ''; // Clear tooltip for non-tooltip cells
+                cell.textContent = currentBrush.emoji;
+                cell.className = `cell ${currentBrush.name}`;
+                cell.title = ''; // Clear tooltip for non-numeric cells
+                gridState[index] = ELEMENTS.findIndex(el => el.emoji === currentBrush.emoji);
             }
-            gridState[index] = ELEMENTS.findIndex(el => el.emoji === currentBrush.emoji);
         }
         saveGridState(gridState);
         updateEmojiCounter();
@@ -300,4 +306,29 @@ document.getElementById('tooltipValue').addEventListener('input', function(e) {
     if (!/^\d{0,3}(\.\d{0,1})?$/.test(value)) {
         e.target.value = value.slice(0, -1);
     }
+});
+
+// Add numeric input handling
+const numericInput = document.querySelector('.numeric-input');
+numericInput.addEventListener('input', function(e) {
+    let value = e.target.value.replace(/[^\d]/g, '');
+    if (value.length > 3) {
+        value = value.slice(0, 3) + '.' + value.slice(3, 4);
+    }
+    e.target.value = value;
+    
+    // Update active cell if numeric brush is selected
+    if (currentBrush.name === 'numeric') {
+        const activeCell = document.querySelector('.cell.active');
+        if (activeCell) {
+            const index = Array.from(activeCell.parentElement.children).indexOf(activeCell);
+            changeCellElement(activeCell, index);
+        }
+    }
+});
+
+numericInput.addEventListener('click', function() {
+    currentBrush = { emoji: '📊', name: 'numeric' };
+    document.querySelectorAll('.brush-button').forEach(btn => btn.classList.remove('active'));
+    this.parentElement.classList.add('active');
 }); 

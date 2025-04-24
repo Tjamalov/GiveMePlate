@@ -128,6 +128,13 @@ body {
     background-color: var(--prayer-bg);
 }
 
+.cell.numeric {
+    background-color: var(--button-bg);
+    color: white;
+    font-size: 12px;
+    font-family: monospace;
+}
+
 .controls {
     display: flex;
     gap: 10px;
@@ -190,7 +197,8 @@ body {
 }
 
 [data-theme="dark"] .theme-toggle {
-    /* content property removed */
+    background-color: var(--button-bg);
+    color: white;
 }
 
 .brush-selector {
@@ -317,4 +325,53 @@ body {
     background-color: var(--empty-cell-bg);
     color: var(--text-color);
     border-color: var(--cell-border);
+}
+
+.numeric-input-container {
+    padding: 0 !important;
+    background-color: transparent !important;
+}
+
+.numeric-input {
+    width: 100%;
+    padding: 8px;
+    border: none;
+    border-radius: 4px;
+    background-color: var(--button-bg);
+    color: white;
+    text-align: center;
+    font-size: 14px;
+    transition: all 0.3s;
+    font-family: monospace;
+}
+
+.numeric-input:focus {
+    outline: none;
+    background-color: var(--button-hover);
+}
+
+.numeric-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="dark"] .numeric-input {
+    background-color: var(--button-bg);
+    color: white;
+    border: 1px solid var(--cell-border);
+}
+
+[data-theme="dark"] .numeric-input:focus {
+    background-color: var(--button-hover);
+    border-color: var(--button-hover);
+}
+
+[data-theme="light"] .numeric-input {
+    background-color: var(--button-bg);
+    color: white;
+    border: 1px solid var(--cell-border);
+}
+
+[data-theme="light"] .numeric-input:focus {
+    background-color: var(--button-hover);
+    border-color: var(--button-hover);
 }
