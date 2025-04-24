@@ -24,9 +24,6 @@
             justify-content: center;
             margin-bottom: 20px;
         }
-        .button-group button {
-            margin-bottom: 0;
-        }
         button { 
             background: #fff; 
             color: #000; 
@@ -34,7 +31,6 @@
             padding: 12px 24px; 
             border-radius: 16px; 
             cursor: pointer; 
-            margin-bottom: 20px;
         }
         #map-container {
             position: relative;
@@ -73,15 +69,8 @@
             cursor: pointer;
             transition: all 0.2s;
         }
-        .place.no-address {
-            background: rgba(255,255,255,0.05);
-            opacity: 0.7;
-        }
         .place:hover {
             background: rgba(255,255,255,0.2);
-        }
-        .place.no-address:hover {
-            background: rgba(255,255,255,0.1);
         }
         .place-type {
             display: inline-block;
@@ -90,21 +79,6 @@
             border-radius: 4px;
             font-size: 0.8em;
             margin-left: 8px;
-        }
-        .divider {
-            height: 1px;
-            background: rgba(255,255,255,0.2);
-            margin: 15px 0;
-            position: relative;
-        }
-        .divider-text {
-            position: absolute;
-            top: -10px;
-            left: 10px;
-            background: #000;
-            padding: 0 10px;
-            font-size: 0.9em;
-            color: rgba(255,255,255,0.6);
         }
         .loading {
             display: flex;
@@ -164,7 +138,6 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Конфигурация приложения
         const CONFIG = {
             map: {
                 zoom: 15,
@@ -172,7 +145,7 @@
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             },
             search: {
-                radius: 1000, // метров
+                radius: 1000,
                 placeTypes: ['cafe', 'restaurant', 'fast_food', 'bar', 'pub', 'bistro', 'food_court'],
                 maxResults: 3
             },
@@ -187,7 +160,6 @@
             }
         };
 
-        // Основной класс приложения
         class FoodFinder {
             constructor() {
                 this.map = null;
@@ -272,7 +244,6 @@
                     })
                 }).addTo(this.map).bindPopup("Ваше местоположение");
 
-                // Обновляем карту после инициализации
                 setTimeout(() => {
                     this.map.invalidateSize();
                     this.map.eachLayer(layer => {
@@ -303,25 +274,20 @@
             }
 
             async searchLuckyPlace(latitude, longitude) {
-                const query = this.buildOverpassQuery(latitude, longitude, 500); // Используем радиус 500 метров
+                const query = this.buildOverpassQuery(latitude, longitude, 500);
                 const response = await fetch(`https://overpass-api.de/api/interpreter?data=${query}`);
                 const data = await response.json();
 
                 this.processPlaces(data, latitude, longitude);
                 
-                // Фильтруем места с адресом
-                const placesWithAddress = this.allPlaces.filter(place => place.hasAddress);
-                
-                if (placesWithAddress.length === 0) {
+                if (this.allPlaces.length === 0) {
                     this.showError("К сожалению, поблизости нет подходящих мест 😞");
                     return;
                 }
 
-                // Выбираем случайное место
-                const randomIndex = Math.floor(Math.random() * placesWithAddress.length);
-                const luckyPlace = placesWithAddress[randomIndex];
+                const randomIndex = Math.floor(Math.random() * this.allPlaces.length);
+                const luckyPlace = this.allPlaces[randomIndex];
                 
-                // Отображаем только одно выбранное место
                 this.displayLuckyPlace(luckyPlace);
             }
 
@@ -342,18 +308,14 @@
                         type: element.tags?.amenity || 'unknown'
                     }))
                     .filter(place => {
-                        // Проверяем, что место имеет название и координаты
                         const hasBasicInfo = place.tags?.name?.trim() && place.lat && place.lon;
-                        // Проверяем, что тип места есть в нашем списке разрешенных типов
                         const hasValidType = place.type && place.type !== 'unknown' && CONFIG.search.placeTypes.includes(place.type);
                         return hasBasicInfo && hasValidType;
                     })
                     .sort((a, b) => {
-                        // Сначала сортируем по наличию адреса
                         if (a.hasAddress !== b.hasAddress) {
                             return a.hasAddress ? -1 : 1;
                         }
-                        // Затем по расстоянию
                         return a.distance - b.distance;
                     });
             }
@@ -367,14 +329,13 @@
                 }
 
                 let html = "<h3>Ближайшие места:</h3>";
-                
-                // Показываем только первые 3 места из общего списка
                 const visiblePlaces = this.allPlaces.slice(0, 3);
-                html += this.createPlacesHtml(visiblePlaces, 0);
+                html += visiblePlaces.map((place, index) => this.createPlaceHtml(place, index)).join('');
                 
-                // Показываем кнопку "Показать всё" если есть больше 3 мест
                 if (this.allPlaces.length > 3) {
-                    html += this.createShowAllButton();
+                    html += `<div class="show-more">
+                        <button id="showAllBtn" onclick="app.showAllPlaces()">Показать всё (${this.allPlaces.length})</button>
+                    </div>`;
                 }
 
                 resultsDiv.innerHTML = html;
@@ -382,15 +343,26 @@
                 this.addPlaceClickHandlers();
             }
 
-            createPlacesHtml(places, startIndex, isNoAddress = false) {
-                return places.slice(0, CONFIG.search.maxResults)
-                    .map((place, index) => this.createPlaceHtml(place, startIndex + index, isNoAddress))
-                    .join('');
+            displayLuckyPlace(place) {
+                const resultsDiv = document.getElementById('results');
+                resultsDiv.innerHTML = `
+                    <h3>Вам повезло! 🎉</h3>
+                    ${this.createPlaceHtml(place, 0)}
+                `;
+                
+                this.clearPlaceMarkers();
+                this.addPlaceMarkers([place]);
+                this.addPlaceClickHandlers();
+                
+                const marker = this.placeMarkers[0];
+                if (marker) {
+                    this.highlightMarker(marker);
+                }
             }
 
-            createPlaceHtml(place, index, isNoAddress = false) {
+            createPlaceHtml(place, index) {
                 return `
-                    <div class="place ${isNoAddress ? 'no-address' : ''}" data-index="${this.allPlaces.indexOf(place)}">
+                    <div class="place" data-index="${this.allPlaces.indexOf(place)}">
                         <strong>${place.tags?.name}</strong>
                         ${CONFIG.placeTypes[place.type] ? `<span class="place-type">${CONFIG.placeTypes[place.type]}</span>` : ''}
                         <div>${Math.round(place.distance)} м</div>
@@ -399,20 +371,13 @@
                 `;
             }
 
-            createDividerHtml() {
-                return `
-                    <div class="divider">
-                        <span class="divider-text">Без указанного адреса</span>
-                    </div>
-                `;
-            }
-
-            createShowAllButton() {
-                return `
-                    <div class="show-more">
-                        <button id="showAllBtn" onclick="app.showAllPlaces()">Показать всё (${this.allPlaces.length})</button>
-                    </div>
-                `;
+            showAllPlaces() {
+                const resultsDiv = document.getElementById('results');
+                let html = "<h3>Все места:</h3>";
+                html += this.allPlaces.map((place, index) => this.createPlaceHtml(place, index)).join('');
+                resultsDiv.innerHTML = html;
+                this.addPlaceMarkers(this.allPlaces);
+                this.addPlaceClickHandlers();
             }
 
             addPlaceMarkers(places = this.allPlaces) {
@@ -428,7 +393,6 @@
                         ${this.getAddress(place) || 'Адрес не указан'}
                     `);
                     
-                    // Добавляем индекс места в маркер для точного соответствия
                     marker.placeIndex = this.allPlaces.indexOf(place);
                     return marker;
                 });
@@ -438,7 +402,6 @@
                 document.querySelectorAll('.place').forEach(placeEl => {
                     placeEl.addEventListener('click', () => {
                         const index = parseInt(placeEl.getAttribute('data-index'));
-                        // Находим маркер, соответствующий этому индексу
                         const marker = this.placeMarkers.find(m => m.placeIndex === index);
                         
                         if (marker) {
@@ -464,18 +427,6 @@
                 document.getElementById('map').scrollIntoView({
                     behavior: 'smooth'
                 });
-            }
-
-            showAllPlaces() {
-                const resultsDiv = document.getElementById('results');
-                let html = "<h3>Все места:</h3>";
-                
-                // Показываем все места
-                html += this.allPlaces.map((place, index) => this.createPlaceHtml(place, index, !place.hasAddress)).join('');
-                
-                resultsDiv.innerHTML = html;
-                this.addPlaceMarkers(this.allPlaces);
-                this.addPlaceClickHandlers();
             }
 
             refreshMap() {
@@ -534,27 +485,8 @@
 
                 return R * c;
             }
-
-            displayLuckyPlace(place) {
-                const resultsDiv = document.getElementById('results');
-                resultsDiv.innerHTML = `
-                    <h3>Вам повезло! 🎉</h3>
-                    ${this.createPlaceHtml(place, 0)}
-                `;
-                
-                this.clearPlaceMarkers();
-                this.addPlaceMarkers([place]);
-                this.addPlaceClickHandlers();
-                
-                // Автоматически выделяем выбранное место
-                const marker = this.placeMarkers[0];
-                if (marker) {
-                    this.highlightMarker(marker);
-                }
-            }
         }
 
-        // Инициализация приложения
         const app = new FoodFinder();
     </script>
 </body>
