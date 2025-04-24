@@ -17,6 +17,39 @@ let currentBrush = { emoji: '💩', name: 'poop' };
 let gridState;
 let tooltipState;
 
+// Helper functions for saving state
+function saveGridState(state) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function saveTooltipState() {
+    localStorage.setItem(TOOLTIP_STORAGE_KEY, JSON.stringify(tooltipState));
+}
+
+// Helper function to update emoji counter
+function updateEmojiCounter() {
+    const counter = document.getElementById('emojiCounter');
+    counter.innerHTML = '';
+    
+    // Count emojis
+    const emojiCounts = {};
+    const cells = document.querySelectorAll('.cell');
+    cells.forEach(cell => {
+        const emoji = cell.textContent;
+        if (emoji && emoji !== '') {
+            emojiCounts[emoji] = (emojiCounts[emoji] || 0) + 1;
+        }
+    });
+
+    // Create counter items
+    Object.entries(emojiCounts).forEach(([emoji, count]) => {
+        const item = document.createElement('div');
+        item.className = 'emoji-counter-item';
+        item.innerHTML = `${emoji} ${count}`;
+        counter.appendChild(item);
+    });
+}
+
 // Initialize state from localStorage or URL
 function initializeState() {
     const savedState = localStorage.getItem(STORAGE_KEY);
@@ -88,35 +121,13 @@ function createGrid() {
         }
     });
 
-    function updateEmojiCounter() {
-        const counter = document.getElementById('emojiCounter');
-        counter.innerHTML = '';
-        
-        // Count emojis
-        const emojiCounts = {};
-        const cells = document.querySelectorAll('.cell');
-        cells.forEach(cell => {
-            const emoji = cell.textContent;
-            if (emoji && emoji !== '') {
-                emojiCounts[emoji] = (emojiCounts[emoji] || 0) + 1;
-            }
-        });
-
-        // Create counter items
-        Object.entries(emojiCounts).forEach(([emoji, count]) => {
-            const item = document.createElement('div');
-            item.className = 'emoji-counter-item';
-            item.innerHTML = `${emoji} ${count}`;
-            counter.appendChild(item);
-        });
-    }
-
     function changeCellElement(cell, index, clear = false) {
         if (clear) {
             cell.textContent = '';
             cell.className = 'cell empty';
             gridState[index] = 0;
         } else {
+            // Don't modify tooltip state when adding emoji
             cell.textContent = currentBrush.emoji;
             cell.className = `cell ${currentBrush.name}`;
             gridState[index] = ELEMENTS.findIndex(el => el.emoji === currentBrush.emoji);
@@ -135,15 +146,51 @@ function createGrid() {
         tooltipElement.style.width = `${100 / GRID_WIDTH}%`;
         tooltipElement.style.height = `${100 / GRID_HEIGHT}%`;
         
+        // Add event listeners for tooltip
+        tooltipElement.addEventListener('mousedown', function(e) {
+            if (!isLevelModeActive) {
+                // If not in Level mode, let the event pass through to the cell
+                e.stopPropagation();
+                const cell = grid.children[index];
+                if (e.button === 0) { // Left click
+                    isMouseDown = true;
+                    changeCellElement(cell, index);
+                } else if (e.button === 2) { // Right click
+                    isRightMouseDown = true;
+                    clearCell(cell, index);
+                }
+            }
+        });
+
+        tooltipElement.addEventListener('mousemove', function(e) {
+            if (!isLevelModeActive) {
+                // If not in Level mode, let the event pass through to the cell
+                e.stopPropagation();
+                const cell = grid.children[index];
+                if (isMouseDown && e.buttons === 1) { // Left button pressed
+                    changeCellElement(cell, index);
+                } else if (isRightMouseDown && e.buttons === 2) { // Right button pressed
+                    clearCell(cell, index);
+                }
+            }
+        });
+
+        tooltipElement.addEventListener('mouseup', function(e) {
+            if (!isLevelModeActive) {
+                e.stopPropagation();
+                if (e.button === 0) {
+                    isMouseDown = false;
+                } else if (e.button === 2) {
+                    isRightMouseDown = false;
+                }
+            }
+        });
+
+        tooltipElement.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+        });
+        
         tooltipLayer.appendChild(tooltipElement);
-    }
-
-    function saveGridState(state) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    }
-
-    function saveTooltipState() {
-        localStorage.setItem(TOOLTIP_STORAGE_KEY, JSON.stringify(tooltipState));
     }
 
     // Handle mouse events for the grid
@@ -159,6 +206,7 @@ function createGrid() {
             if (isLevelModeActive) {
                 addTooltipToCell(cell, index);
             } else {
+                // Always allow adding emoji, regardless of tooltip state
                 changeCellElement(cell, index);
             }
         } else if (e.button === 2) { // Right click
@@ -185,6 +233,7 @@ function createGrid() {
             if (isLevelModeActive) {
                 addTooltipToCell(cell, index);
             } else {
+                // Always allow adding emoji, regardless of tooltip state
                 changeCellElement(cell, index);
             }
         } else if (isRightMouseDown && e.buttons === 2) { // Right button pressed
@@ -438,49 +487,56 @@ function loadGrid(e) {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Check if file is JSON
     if (!file.name.endsWith('.json')) {
-        alert('Please select a JSON file');
+        alert('Please select a valid JSON file');
+        e.target.value = ''; // Reset input
         return;
     }
 
     const reader = new FileReader();
     reader.onload = function(e) {
         try {
+            console.log('Raw file content:', e.target.result);
             const state = JSON.parse(e.target.result);
-            console.log('Loaded state:', state);
-            
-            if (state.grid && state.tooltips) {
-                // Update global state variables
-                gridState = [...state.grid]; // Create a new array to ensure proper state update
-                tooltipState = [...state.tooltips]; // Create a new array to ensure proper state update
-                
-                console.log('Updated gridState:', gridState);
-                console.log('Updated tooltipState:', tooltipState);
-                
-                // Save to localStorage
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(gridState));
-                localStorage.setItem(TOOLTIP_STORAGE_KEY, JSON.stringify(tooltipState));
-                
-                // Clear existing grid and tooltip layer
-                const grid = document.getElementById('grid');
-                const tooltipLayer = document.getElementById('tooltipLayer');
-                grid.innerHTML = '';
-                tooltipLayer.innerHTML = '';
-                
-                // Recreate the grid with new state
-                createGrid();
-            } else {
-                alert('Invalid grid state file');
+            console.log('Parsed state:', state);
+
+            if (!state.grid || !state.tooltips) {
+                console.error('Invalid state structure:', state);
+                alert('Invalid grid state file: missing grid or tooltips');
+                return;
             }
-        } catch (err) {
-            console.error('Failed to load grid state:', err);
-            alert('Failed to load grid state. Please check the file format.');
+
+            // Update global state
+            gridState = state.grid;
+            tooltipState = state.tooltips;
+
+            console.log('Updated gridState:', gridState);
+            console.log('Updated tooltipState:', tooltipState);
+
+            // Save to localStorage
+            saveGridState(gridState);
+            saveTooltipState();
+
+            // Recreate the grid
+            createGrid();
+
+            // Update emoji counter
+            updateEmojiCounter();
+        } catch (error) {
+            console.error('Error loading grid:', error);
+            alert('Error loading grid state: ' + error.message);
+        } finally {
+            // Reset input after loading (success or error)
+            e.target.value = '';
         }
     };
+
     reader.onerror = function() {
-        alert('Error reading file');
+        console.error('FileReader error:', reader.error);
+        alert('Error reading file: ' + reader.error.message);
+        e.target.value = ''; // Reset input on error
     };
+
     reader.readAsText(file);
 }
 
