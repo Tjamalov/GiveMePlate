@@ -180,29 +180,57 @@ function createGrid() {
 
     // Add numeric input handling
     const numericInput = document.querySelector('.numeric-input');
+    const levelButton = document.getElementById('levelButton');
+    let isLevelModeActive = false;
+
+    levelButton.addEventListener('click', function() {
+        isLevelModeActive = !isLevelModeActive;
+        this.classList.toggle('active');
+        
+        if (isLevelModeActive) {
+            currentBrush = { emoji: '📊', name: 'numeric' };
+            document.querySelectorAll('.brush-button').forEach(btn => btn.classList.remove('active'));
+        } else {
+            currentBrush = { emoji: '💩', name: 'poop' };
+            document.querySelector('.brush-button[data-name="poop"]').classList.add('active');
+        }
+    });
+
     numericInput.addEventListener('input', function(e) {
         let value = e.target.value.replace(/[^\d]/g, '');
+        
+        // Insert decimal point after 3 digits
         if (value.length > 3) {
             value = value.slice(0, 3) + '.' + value.slice(3, 4);
         }
+        
+        // Update input value
         e.target.value = value;
         
-        if (!/^\d{3}\.\d$/.test(value)) {
+        // Validate format
+        if (!/^\d{3}\.\d$/.test(value) && value.length > 0) {
             e.target.style.borderColor = 'red';
         } else {
             e.target.style.borderColor = '';
         }
     });
 
-    numericInput.addEventListener('click', function() {
-        currentBrush = { emoji: '📊', name: 'numeric' };
-        document.querySelectorAll('.brush-button').forEach(btn => btn.classList.remove('active'));
-        this.parentElement.classList.add('active');
+    // Prevent non-numeric input
+    numericInput.addEventListener('keypress', function(e) {
+        if (!/\d/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Delete') {
+            e.preventDefault();
+        }
     });
 
-    // Add tooltip placement functionality
+    numericInput.addEventListener('click', function() {
+        if (!isLevelModeActive) {
+            levelButton.click();
+        }
+    });
+
+    // Update grid click handler to use numeric input value
     grid.addEventListener('click', function(e) {
-        if (currentBrush.name === 'numeric' && numericInput.value && /^\d{3}\.\d$/.test(numericInput.value)) {
+        if (isLevelModeActive && numericInput.value && /^\d{3}\.\d$/.test(numericInput.value)) {
             const cell = e.target.closest('.cell');
             if (cell) {
                 const index = Array.from(cell.parentElement.children).indexOf(cell);
