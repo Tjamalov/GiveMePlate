@@ -7,7 +7,8 @@ const ELEMENTS = [
     { emoji: '🍎', name: 'apple' },
     { emoji: '🏢', name: 'building' },
     { emoji: '🚧', name: 'construction' },
-    { emoji: '🙏', name: 'prayer' }
+    { emoji: '🙏', name: 'prayer' },
+    { emoji: '📊', name: 'tooltip' }
 ];
 const STORAGE_KEY = 'gridState';
 
@@ -282,4 +283,23 @@ document.getElementById('themeToggle').addEventListener('click', toggleTheme);
 // Initialize the grid and theme when the page loads
 initTheme();
 loadStateFromUrl();
-createGrid(); 
+createGrid();
+
+function updateCell(cell) {
+    const element = ELEMENTS[currentBrush];
+    cell.className = 'cell';
+    if (element.name !== 'empty') {
+        cell.classList.add(element.name);
+        cell.textContent = element.emoji;
+    } else {
+        cell.textContent = '';
+    }
+}
+
+// Add event listener for tooltip input validation
+document.getElementById('tooltipValue').addEventListener('input', function(e) {
+    const value = e.target.value;
+    if (!/^\d{0,3}(\.\d{0,1})?$/.test(value)) {
+        e.target.value = value.slice(0, -1);
+    }
+}); 

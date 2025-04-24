@@ -269,6 +269,8 @@ body {
 }
 
 .version-link {
+    position: absolute;
+    left: 0;
     padding: 12px 24px;
     font-size: 14px;
     font-weight: 500;
@@ -292,4 +294,27 @@ body {
 
 .version-link:active {
     background-color: var(--button-active);
+}
+
+.tooltip-input {
+    width: 100%;
+    padding: 4px;
+    margin-top: 4px;
+    border: 1px solid var(--cell-border);
+    border-radius: 4px;
+    background-color: var(--cell-bg);
+    color: var(--text-color);
+    font-size: 12px;
+    text-align: center;
+}
+
+.tooltip-input:focus {
+    outline: none;
+    border-color: var(--button-bg);
+}
+
+[data-theme="dark"] .tooltip-input {
+    background-color: var(--empty-cell-bg);
+    color: var(--text-color);
+    border-color: var(--cell-border);
 }
