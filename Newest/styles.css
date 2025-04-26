@@ -88,6 +88,12 @@ button {
     animation: spin 1s linear infinite;
     margin-bottom: 10px;
 }
+.error {
+    color: #ff6b6b;
+    padding: 10px;
+    background: rgba(255,107,107,0.1);
+    border-radius: 8px;
+}
 .highlighted {
     animation: highlight 1.5s ease-in-out;
 }
@@ -110,4 +116,164 @@ button {
     0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.7); }
     70% { box-shadow: 0 0 0 10px rgba(255,255,255,0); }
     100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+}
+
+/* Стили для Яндекс.Карт */
+.ymaps-2-1-79-balloon {
+    background: rgba(0,0,0,0.9) !important;
+    color: white !important;
+    border-radius: 8px !important;
+}
+.ymaps-2-1-79-balloon__content {
+    color: white !important;
+    padding: 10px !important;
+}
+.ymaps-2-1-79-balloon__close-button {
+    background: rgba(255,255,255,0.2) !important;
+    border-radius: 50% !important;
+}
+.ymaps-2-1-79-balloon__close-button:hover {
+    background: rgba(255,255,255,0.3) !important;
+}
+.ymaps-2-1-79-balloon__tail {
+    background: rgba(0,0,0,0.9) !important;
+}
+.ymaps-2-1-79-balloon__layout {
+    background: rgba(0,0,0,0.9) !important;
+    border-radius: 8px !important;
+}
+.ymaps-2-1-79-balloon__content {
+    background: rgba(0,0,0,0.9) !important;
+}
+.ymaps-2-1-79-balloon__content ymaps {
+    color: white !important;
+}
+.ymaps-2-1-79-balloon__content ymaps b {
+    color: white !important;
+}
+.ymaps-2-1-79-balloon__content ymaps small {
+    color: rgba(255,255,255,0.7) !important;
+}
+
+/* Стили для InfoWindow */
+.gm-style .gm-style-iw {
+    color: #333;
+    font-family: Arial, sans-serif;
+    padding: 10px;
+}
+
+.gm-style .gm-style-iw h4 {
+    margin: 0 0 10px 0;
+    color: #333;
+    font-size: 16px;
+}
+
+.gm-style .gm-style-iw p {
+    margin: 5px 0;
+    color: #333;
+    font-size: 14px;
+}
+
+.gm-style .gm-style-iw .place-type {
+    color: #666;
+    font-style: italic;
+}
+
+.gm-style .gm-style-iw a {
+    color: #1a73e8;
+    text-decoration: none;
+}
+
+.gm-style .gm-style-iw a:hover {
+    text-decoration: underline;
+}
+
+.gm-style .gm-style-iw ul {
+    margin: 5px 0;
+    padding-left: 20px;
+}
+
+.gm-style .gm-style-iw li {
+    margin: 3px 0;
+    color: #333;
+    font-size: 14px;
+}
+
+/* Стили для кнопки закрытия InfoWindow */
+.gm-style .gm-style-iw-d {
+    overflow: hidden !important;
+}
+
+.gm-style .gm-style-iw-c {
+    padding: 0;
+    max-width: 350px;
+}
+
+.gm-style .gm-style-iw-t::after {
+    background: #fff;
+}
+
+/* Стили для контента InfoWindow */
+.place-info {
+    padding: 10px;
+    color: #333;
+    background: #fff;
+    max-width: 350px;
+}
+
+.place-info h4 {
+    margin: 0 0 8px 0;
+    color: #333;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.place-info p {
+    margin: 4px 0;
+    color: #333;
+    font-size: 14px;
+}
+
+.place-info .place-type {
+    color: #666;
+    font-style: italic;
+}
+
+.place-info a {
+    color: #1a73e8;
+    text-decoration: none;
+}
+
+.place-info a:hover {
+    text-decoration: underline;
+}
+
+.place-info ul {
+    margin: 5px 0;
+    padding-left: 20px;
+}
+
+.place-info li {
+    margin: 3px 0;
+    color: #333;
+    font-size: 14px;
+}
+
+/* Стили для фотографии в InfoWindow */
+.place-photo {
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.place-photo img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Обновляем стили для InfoWindow с учетом фотографии */
+.gm-style .gm-style-iw-d {
+    max-height: 500px !important;
+    overflow-y: auto !important;
 } 
