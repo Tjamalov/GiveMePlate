@@ -305,7 +305,7 @@ function createGrid() {
     });
 
     // Add numeric input handling
-    const numericInput = document.querySelector('.numeric-input');
+    const levelInput = document.querySelector('.level-input');
     const levelButton = document.getElementById('levelButton');
 
     levelButton.addEventListener('click', function() {
@@ -323,7 +323,7 @@ function createGrid() {
 
     // Helper function to add tooltip to cell
     function addTooltipToCell(cell, index) {
-        const value = numericInput.value;
+        const value = levelInput.value;
         
         // Remove existing tooltip if any
         const existingTooltip = tooltipLayer.querySelector(`[data-index="${index}"]`);
@@ -354,35 +354,12 @@ function createGrid() {
         // Save changes
         saveGridState(gridState);
         saveTooltipState();
+        
+        // Update emoji counter
+        updateEmojiCounter();
     }
 
-    numericInput.addEventListener('input', function(e) {
-        let value = e.target.value.replace(/[^\d]/g, '');
-        
-        // Insert decimal point after 3 digits
-        if (value.length > 3) {
-            value = value.slice(0, 3) + '.' + value.slice(3, 4);
-        }
-        
-        // Update input value
-        e.target.value = value;
-        
-        // Validate format
-        if (!/^\d{3}\.\d$/.test(value) && value.length > 0) {
-            e.target.style.borderColor = 'red';
-        } else {
-            e.target.style.borderColor = '';
-        }
-    });
-
-    // Prevent non-numeric input
-    numericInput.addEventListener('keypress', function(e) {
-        if (!/\d/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Delete') {
-            e.preventDefault();
-        }
-    });
-
-    numericInput.addEventListener('click', function() {
+    levelInput.addEventListener('click', function() {
         if (!isLevelModeActive) {
             levelButton.click();
         }
@@ -405,6 +382,21 @@ function resetGrid() {
     createGrid();
 }
 
+function resetLevels() {
+    // Reset only tooltip state
+    tooltipState = new Array(GRID_WIDTH * GRID_HEIGHT).fill(null);
+    
+    // Save to localStorage
+    localStorage.setItem(TOOLTIP_STORAGE_KEY, JSON.stringify(tooltipState));
+    
+    // Clear all tooltips from the layer
+    const tooltipLayer = document.getElementById('tooltipLayer');
+    tooltipLayer.innerHTML = '';
+    
+    // Update emoji counter
+    updateEmojiCounter();
+}
+
 function toggleTheme() {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
@@ -423,6 +415,7 @@ function initTheme() {
 
 // Add button event listeners
 document.getElementById('resetButton').addEventListener('click', resetGrid);
+document.getElementById('resetLevelsButton').addEventListener('click', resetLevels);
 document.getElementById('shareButton').addEventListener('click', shareGrid);
 document.getElementById('saveButton').addEventListener('click', saveGrid);
 document.getElementById('loadFile').addEventListener('change', loadGrid);
