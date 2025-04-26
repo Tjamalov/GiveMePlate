@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Детали места</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="placeDetails" class="place-details">
+        <div class="place-header">
+            <button class="back-button" onclick="window.history.back()">←</button>
+            <h1 id="placeName">Загрузка...</h1>
+        </div>
+        <div class="place-content">
+            <div id="placeMap" class="place-map"></div>
+            <div id="placePhotos" class="place-photos"></div>
+            <div id="placeInfo" class="place-info">
+                <div class="place-loading">
+                    <div class="place-loader"></div>
+                    <p>Загружаем информацию...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDA1E3UCbB_-wIEbiX5gJn4lLVPB5vy85w&libraries=places&language=ru"></script>
+    <script src="place-details.js"></script>
+</body>
+</html> 

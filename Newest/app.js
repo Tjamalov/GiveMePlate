@@ -502,155 +502,12 @@ class FoodFinder {
                 }
             });
             
-            const infoWindow = new google.maps.InfoWindow({
-                content: `
-                    <div class="place-info">
-                        <h4>${place.name}</h4>
-                        ${place.type ? `<p class="place-type">${CONFIG.placeTypes[place.type]}</p>` : ''}
-                        <p>${place.address || 'Адрес не указан'}</p>
-                        <p>Расстояние: ${Math.round(place.distance)} м</p>
-                        <div class="loading-photo">
-                            <div class="loader"></div>
-                            <p>Загружаем фото...</p>
-                        </div>
-                    </div>
-                `
-            });
-            
             marker.addListener('click', () => {
-                console.log('Клик по маркеру:', place.name);
-                this.highlightMarker(marker);
-                // Открываем InfoWindow сразу
-                infoWindow.open(this.map, marker);
-                // Затем загружаем детали
-                this.getPlaceDetails(place.placeId, infoWindow);
+                this.openPlaceDetails(place);
             });
             
-            marker.infoWindow = infoWindow;
             marker.placeIndex = this.allPlaces.indexOf(place);
             return marker;
-        });
-    }
-
-    getPlaceDetails(placeId, infoWindow) {
-        if (!placeId) {
-            console.error('placeId не указан');
-            return;
-        }
-        
-        console.log('Запрашиваем детали места:', placeId);
-        
-        const request = {
-            placeId: placeId,
-            fields: [
-                'name',
-                'formatted_address',
-                'formatted_phone_number',
-                'website',
-                'opening_hours',
-                'rating',
-                'user_ratings_total',
-                'photos',
-                'types'
-            ]
-        };
-
-        console.log('Параметры запроса:', request);
-
-        const placesService = new google.maps.places.PlacesService(this.map);
-        placesService.getDetails(request, (place, status) => {
-            console.log('Статус ответа:', status);
-            
-            if (status === google.maps.places.PlacesServiceStatus.OK && place) {
-                console.log('Получены детали места:', place);
-                console.log('Типы места:', place.types);
-                console.log('Фотографии:', place.photos);
-                
-                let content = `
-                    <div class="place-info">
-                        <h4>${place.name}</h4>
-                `;
-
-                // Добавляем фотографию, если она есть
-                if (place.photos && place.photos.length > 0) {
-                    console.log('Найдены фотографии:', place.photos.length);
-                    try {
-                        const photo = place.photos[0];
-                        console.log('Первая фотография:', photo);
-                        
-                        // Получаем URL фотографии с максимальным размером
-                        const photoUrl = photo.getUrl({
-                            maxWidth: 400,
-                            maxHeight: 300
-                        });
-                        console.log('URL фотографии:', photoUrl);
-                        
-                        // Создаем временный div для загрузки фото
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = `
-                            <div class="place-photo">
-                                <img src="${photoUrl}" alt="${place.name}" 
-                                     style="max-width: 100%; height: auto; border-radius: 8px; margin-bottom: 10px;"
-                                     onerror="this.style.display='none'">
-                            </div>
-                        `;
-                        
-                        // Устанавливаем таймаут для скрытия индикатора загрузки
-                        setTimeout(() => {
-                            const loadingDiv = infoWindow.getContent().querySelector('.loading-photo');
-                            if (loadingDiv) {
-                                loadingDiv.style.display = 'none';
-                            }
-                        }, 5000); // 5 секунд таймаут
-                        
-                        content += tempDiv.innerHTML;
-                    } catch (error) {
-                        console.error('Ошибка при получении URL фотографии:', error);
-                    }
-                } else {
-                    console.log('Фотографии не найдены для места:', place.name);
-                    // Скрываем индикатор загрузки, если фото нет
-                    const loadingDiv = infoWindow.getContent().querySelector('.loading-photo');
-                    if (loadingDiv) {
-                        loadingDiv.style.display = 'none';
-                    }
-                }
-
-                content += `
-                        <p>${place.formatted_address || 'Адрес не указан'}</p>
-                `;
-
-                if (place.formatted_phone_number) {
-                    content += `<p>Телефон: ${place.formatted_phone_number}</p>`;
-                }
-
-                if (place.website) {
-                    content += `<p><a href="${place.website}" target="_blank">Сайт</a></p>`;
-                }
-
-                if (place.rating) {
-                    content += `<p>Рейтинг: ${place.rating} (${place.user_ratings_total} отзывов)</p>`;
-                }
-
-                if (place.opening_hours && place.opening_hours.weekday_text) {
-                    content += `<p>Часы работы:</p><ul>`;
-                    place.opening_hours.weekday_text.forEach(day => {
-                        content += `<li>${day}</li>`;
-                    });
-                    content += `</ul>`;
-                }
-
-                content += `</div>`;
-                infoWindow.setContent(content);
-            } else {
-                console.error('Ошибка при получении деталей места:', status);
-                infoWindow.setContent(`
-                    <div class="place-info">
-                        <h4>Ошибка загрузки</h4>
-                        <p>Не удалось загрузить детальную информацию о месте</p>
-                    </div>
-                `);
-            }
         });
     }
 
@@ -659,18 +516,26 @@ class FoodFinder {
             placeEl.addEventListener('click', () => {
                 const index = parseInt(placeEl.getAttribute('data-index'));
                 const place = this.allPlaces[index];
-                const marker = this.placeMarkers.find(m => m.placeIndex === index);
-                
-                if (marker) {
-                    console.log('Клик по месту в списке:', place.name);
-                    this.highlightMarker(marker);
-                    // Открываем InfoWindow сразу
-                    marker.infoWindow.open(this.map, marker);
-                    // Затем загружаем детали
-                    this.getPlaceDetails(place.placeId, marker.infoWindow);
-                }
+                this.openPlaceDetails(place);
             });
         });
+    }
+
+    openPlaceDetails(place) {
+        // Сохраняем текущие координаты пользователя
+        const userPosition = this.userMarker ? this.userMarker.getPosition() : null;
+        
+        // Формируем URL для страницы деталей
+        const url = new URL('place-details.html', window.location.href);
+        url.searchParams.set('placeId', place.placeId);
+        
+        if (userPosition) {
+            url.searchParams.set('userLat', userPosition.lat());
+            url.searchParams.set('userLng', userPosition.lng());
+        }
+        
+        // Открываем страницу деталей
+        window.location.href = url.toString();
     }
 
     highlightMarker(marker) {

@@ -276,4 +276,197 @@ button {
 .gm-style .gm-style-iw-d {
     max-height: 500px !important;
     overflow-y: auto !important;
+}
+
+/* Стили для страницы деталей места */
+.place-details {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--background-color);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+}
+
+.place-header {
+    padding: 20px;
+    background: var(--header-background);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.back-button {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 5px;
+    color: var(--text-color);
+    transition: color 0.3s ease;
+}
+
+.back-button:hover {
+    color: var(--primary-color);
+}
+
+.place-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.place-map {
+    height: 300px;
+    margin: 20px 0;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.place-photos {
+    display: flex;
+    gap: 15px;
+    overflow-x: auto;
+    padding: 15px 0;
+    margin: 20px 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary-color) var(--background-color);
+}
+
+.place-photos::-webkit-scrollbar {
+    height: 8px;
+}
+
+.place-photos::-webkit-scrollbar-track {
+    background: var(--background-color);
+}
+
+.place-photos::-webkit-scrollbar-thumb {
+    background-color: var(--primary-color);
+    border-radius: 4px;
+}
+
+.place-photo {
+    flex: 0 0 auto;
+    width: 250px;
+    height: 180px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+}
+
+.place-photo:hover {
+    transform: scale(1.02);
+}
+
+.place-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.place-info {
+    margin-top: 30px;
+    background: var(--card-background);
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.place-info h2 {
+    margin-bottom: 20px;
+    color: var(--primary-color);
+    font-size: 1.5em;
+}
+
+.place-info p {
+    margin: 15px 0;
+    line-height: 1.6;
+}
+
+.place-info strong {
+    color: var(--primary-color);
+}
+
+.place-info a {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.place-info a:hover {
+    color: var(--primary-color-dark);
+}
+
+.place-info ul {
+    list-style: none;
+    padding: 0;
+    margin: 15px 0;
+}
+
+.place-info li {
+    margin: 10px 0;
+    padding-left: 20px;
+    position: relative;
+}
+
+.place-info li::before {
+    content: "•";
+    color: var(--primary-color);
+    position: absolute;
+    left: 0;
+}
+
+.place-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    background: var(--card-background);
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.place-loader {
+    border: 4px solid var(--background-color);
+    border-top: 4px solid var(--primary-color);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 2s linear infinite;
+}
+
+.place-error {
+    color: var(--error-color);
+    padding: 20px;
+    text-align: center;
+    background: var(--card-background);
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 768px) {
+    .place-content {
+        padding: 15px;
+    }
+
+    .place-photo {
+        width: 200px;
+        height: 150px;
+    }
+
+    .place-header {
+        padding: 15px;
+    }
 } 
