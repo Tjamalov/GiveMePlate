@@ -7,7 +7,11 @@ const ELEMENTS = [
     { emoji: '🍎', name: 'apple' },
     { emoji: '🏢', name: 'building' },
     { emoji: '🚧', name: 'construction' },
-    { emoji: '🙏', name: 'prayer' }
+    { emoji: '🙏', name: 'prayer' },
+    { emoji: '🌰', name: 'nuts' },
+    { emoji: '🧱', name: 'fence' },
+    { emoji: '🦋', name: 'cocoon' },
+    { emoji: '🌲', name: 'tree2' }
 ];
 const STORAGE_KEY = 'gridState';
 const TOOLTIP_STORAGE_KEY = 'tooltipState';
@@ -28,9 +32,6 @@ function saveTooltipState() {
 
 // Helper function to update emoji counter
 function updateEmojiCounter() {
-    const counter = document.getElementById('emojiCounter');
-    counter.innerHTML = '';
-    
     // Count emojis
     const emojiCounts = {};
     const cells = document.querySelectorAll('.cell');
@@ -41,12 +42,12 @@ function updateEmojiCounter() {
         }
     });
 
-    // Create counter items
-    Object.entries(emojiCounts).forEach(([emoji, count]) => {
-        const item = document.createElement('div');
-        item.className = 'emoji-counter-item';
-        item.innerHTML = `${emoji} ${count}`;
-        counter.appendChild(item);
+    // Update counters in brush buttons
+    const brushButtons = document.querySelectorAll('.brush-button');
+    brushButtons.forEach(button => {
+        const emoji = button.dataset.emoji;
+        const counter = button.querySelector('.counter');
+        counter.textContent = emojiCounts[emoji] || 0;
     });
 }
 
