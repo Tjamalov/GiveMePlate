@@ -94,7 +94,7 @@ function createGrid() {
 
     // Initialize brushes
     currentBrush = { emoji: '💩', name: 'poop' };
-    let isLevelModeActive = false;
+    let isTooltipModeActive = false;
 
     // Clear existing grid and tooltip layer
     grid.innerHTML = '';
@@ -149,8 +149,8 @@ function createGrid() {
         
         // Add event listeners for tooltip
         tooltipElement.addEventListener('mousedown', function(e) {
-            if (!isLevelModeActive) {
-                // If not in Level mode, let the event pass through to the cell
+            if (!isTooltipModeActive) {
+                // If not in Tooltip mode, let the event pass through to the cell
                 e.stopPropagation();
                 const cell = grid.children[index];
                 if (e.button === 0) { // Left click
@@ -164,8 +164,8 @@ function createGrid() {
         });
 
         tooltipElement.addEventListener('mousemove', function(e) {
-            if (!isLevelModeActive) {
-                // If not in Level mode, let the event pass through to the cell
+            if (!isTooltipModeActive) {
+                // If not in Tooltip mode, let the event pass through to the cell
                 e.stopPropagation();
                 const cell = grid.children[index];
                 if (isMouseDown && e.buttons === 1) { // Left button pressed
@@ -177,7 +177,7 @@ function createGrid() {
         });
 
         tooltipElement.addEventListener('mouseup', function(e) {
-            if (!isLevelModeActive) {
+            if (!isTooltipModeActive) {
                 e.stopPropagation();
                 if (e.button === 0) {
                     isMouseDown = false;
@@ -204,7 +204,7 @@ function createGrid() {
         
         if (e.button === 0) { // Left click
             isMouseDown = true;
-            if (isLevelModeActive) {
+            if (isTooltipModeActive) {
                 addTooltipToCell(cell, index);
             } else {
                 // Always allow adding emoji, regardless of tooltip state
@@ -231,7 +231,7 @@ function createGrid() {
         const index = Array.from(cell.parentElement.children).indexOf(cell);
         
         if (isMouseDown && e.buttons === 1) { // Left button pressed
-            if (isLevelModeActive) {
+            if (isTooltipModeActive) {
                 addTooltipToCell(cell, index);
             } else {
                 // Always allow adding emoji, regardless of tooltip state
@@ -296,24 +296,24 @@ function createGrid() {
                 name: button.dataset.name
             };
             
-            // Deactivate Level mode if it was active
-            if (isLevelModeActive) {
-                isLevelModeActive = false;
-                levelButton.classList.remove('active');
+            // Deactivate Tooltip mode if it was active
+            if (isTooltipModeActive) {
+                isTooltipModeActive = false;
+                tooltipButton.classList.remove('active');
             }
         });
     });
 
-    // Add numeric input handling
-    const levelInput = document.querySelector('.level-input');
-    const levelButton = document.getElementById('levelButton');
+    // Add tooltip input handling
+    const tooltipInput = document.querySelector('.level-input');
+    const tooltipButton = document.getElementById('levelButton');
 
-    levelButton.addEventListener('click', function() {
-        isLevelModeActive = !isLevelModeActive;
+    tooltipButton.addEventListener('click', function() {
+        isTooltipModeActive = !isTooltipModeActive;
         this.classList.toggle('active');
         
-        if (isLevelModeActive) {
-            // Don't change currentBrush in Level mode
+        if (isTooltipModeActive) {
+            // Don't change currentBrush in Tooltip mode
             document.querySelectorAll('.brush-button').forEach(btn => btn.classList.remove('active'));
         } else {
             currentBrush = { emoji: '💩', name: 'poop' };
@@ -323,7 +323,7 @@ function createGrid() {
 
     // Helper function to add tooltip to cell
     function addTooltipToCell(cell, index) {
-        const value = levelInput.value;
+        const value = tooltipInput.value;
         
         // Remove existing tooltip if any
         const existingTooltip = tooltipLayer.querySelector(`[data-index="${index}"]`);
@@ -336,6 +336,12 @@ function createGrid() {
         tooltipState[index] = value;
         saveTooltipState();
     }
+
+    tooltipInput.addEventListener('click', function() {
+        if (!isTooltipModeActive) {
+            tooltipButton.click();
+        }
+    });
 
     // Helper function to clear cell completely
     function clearCell(cell, index) {
@@ -358,12 +364,6 @@ function createGrid() {
         // Update emoji counter
         updateEmojiCounter();
     }
-
-    levelInput.addEventListener('click', function() {
-        if (!isLevelModeActive) {
-            levelButton.click();
-        }
-    });
 
     // Initialize emoji counter
     updateEmojiCounter();
