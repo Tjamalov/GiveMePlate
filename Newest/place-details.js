@@ -4,6 +4,7 @@ class PlaceDetails {
         this.placeMarker = null;
         this.userMarker = null;
         this.place = null;
+        this.placeType = null;
         
         this.initialize();
     }
@@ -14,11 +15,15 @@ class PlaceDetails {
         const placeId = urlParams.get('placeId');
         const userLat = parseFloat(urlParams.get('userLat'));
         const userLng = parseFloat(urlParams.get('userLng'));
+        const placeType = urlParams.get('placeType'); // Получаем тип места
 
         if (!placeId) {
             this.showError('ID места не указан');
             return;
         }
+
+        // Сохраняем тип места
+        this.placeType = placeType;
 
         // Инициализируем карту
         this.initializeMap(userLat, userLng);
@@ -37,11 +42,20 @@ class PlaceDetails {
 
         // Добавляем маркер пользователя
         if (userLat && userLng) {
+            const svg = `
+                <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                    <text x="20" y="20" font-size="30" text-anchor="middle" dominant-baseline="middle" fill="red">📍</text>
+                </svg>
+            `;
+            const encodedSvg = encodeURIComponent(svg).replace(/'/g, '%27').replace(/"/g, '%22');
+
             this.userMarker = new google.maps.Marker({
                 position: { lat: userLat, lng: userLng },
                 map: this.map,
                 icon: {
-                    url: "http://maps.google.com/mapfiles/ms/icons/red-dot.png"
+                    url: 'data:image/svg+xml;charset=utf-8,' + encodedSvg,
+                    scaledSize: new google.maps.Size(40, 40),
+                    anchor: new google.maps.Point(20, 20)
                 }
             });
         }
@@ -89,11 +103,44 @@ class PlaceDetails {
 
         // Добавляем маркер места на карту
         if (this.place.geometry) {
+            // Определяем эмоджи в зависимости от типа места
+            let emoji;
+            console.log('Определяем эмоджи для места с типом:', this.placeType);
+            
+            switch(this.placeType) {
+                case 'bar':
+                case 'pub':
+                    emoji = '🍺';
+                    break;
+                case 'restaurant':
+                    emoji = '🍽️';
+                    break;
+                case 'cafe':
+                    emoji = '☕';
+                    break;
+                case 'night_club':
+                    emoji = '🎉';
+                    break;
+                default:
+                    emoji = '🍽️';
+            }
+            
+            console.log('Выбранное эмоджи:', emoji);
+
+            const svg = `
+                <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                    <text x="20" y="20" font-size="30" text-anchor="middle" dominant-baseline="middle" fill="black">${emoji}</text>
+                </svg>
+            `;
+            const encodedSvg = encodeURIComponent(svg).replace(/'/g, '%27').replace(/"/g, '%22');
+
             this.placeMarker = new google.maps.Marker({
                 position: this.place.geometry.location,
                 map: this.map,
                 icon: {
-                    url: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
+                    url: 'data:image/svg+xml;charset=utf-8,' + encodedSvg,
+                    scaledSize: new google.maps.Size(40, 40),
+                    anchor: new google.maps.Point(20, 20)
                 }
             });
 

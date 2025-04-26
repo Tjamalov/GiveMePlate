@@ -5,15 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Детали места</title>
     <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
 <body>
     <div id="placeDetails" class="place-details">
         <div class="place-header">
-            <button class="back-button" onclick="window.history.back()">←</button>
+            <button class="back-button" onclick="window.history.back()">
+                <span class="material-icons">arrow_back</span>
+            </button>
             <h1 id="placeName">Загрузка...</h1>
         </div>
         <div class="place-content">
-            <div id="placeMap" class="place-map"></div>
             <div id="placePhotos" class="place-photos"></div>
             <div id="placeInfo" class="place-info">
                 <div class="place-loading">
@@ -21,6 +23,7 @@
                     <p>Загружаем информацию...</p>
                 </div>
             </div>
+            <div id="placeMap" class="place-map"></div>
         </div>
     </div>
 

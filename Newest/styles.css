@@ -118,166 +118,6 @@ button {
     100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
 }
 
-/* Стили для Яндекс.Карт */
-.ymaps-2-1-79-balloon {
-    background: rgba(0,0,0,0.9) !important;
-    color: white !important;
-    border-radius: 8px !important;
-}
-.ymaps-2-1-79-balloon__content {
-    color: white !important;
-    padding: 10px !important;
-}
-.ymaps-2-1-79-balloon__close-button {
-    background: rgba(255,255,255,0.2) !important;
-    border-radius: 50% !important;
-}
-.ymaps-2-1-79-balloon__close-button:hover {
-    background: rgba(255,255,255,0.3) !important;
-}
-.ymaps-2-1-79-balloon__tail {
-    background: rgba(0,0,0,0.9) !important;
-}
-.ymaps-2-1-79-balloon__layout {
-    background: rgba(0,0,0,0.9) !important;
-    border-radius: 8px !important;
-}
-.ymaps-2-1-79-balloon__content {
-    background: rgba(0,0,0,0.9) !important;
-}
-.ymaps-2-1-79-balloon__content ymaps {
-    color: white !important;
-}
-.ymaps-2-1-79-balloon__content ymaps b {
-    color: white !important;
-}
-.ymaps-2-1-79-balloon__content ymaps small {
-    color: rgba(255,255,255,0.7) !important;
-}
-
-/* Стили для InfoWindow */
-.gm-style .gm-style-iw {
-    color: #333;
-    font-family: Arial, sans-serif;
-    padding: 10px;
-}
-
-.gm-style .gm-style-iw h4 {
-    margin: 0 0 10px 0;
-    color: #333;
-    font-size: 16px;
-}
-
-.gm-style .gm-style-iw p {
-    margin: 5px 0;
-    color: #333;
-    font-size: 14px;
-}
-
-.gm-style .gm-style-iw .place-type {
-    color: #666;
-    font-style: italic;
-}
-
-.gm-style .gm-style-iw a {
-    color: #1a73e8;
-    text-decoration: none;
-}
-
-.gm-style .gm-style-iw a:hover {
-    text-decoration: underline;
-}
-
-.gm-style .gm-style-iw ul {
-    margin: 5px 0;
-    padding-left: 20px;
-}
-
-.gm-style .gm-style-iw li {
-    margin: 3px 0;
-    color: #333;
-    font-size: 14px;
-}
-
-/* Стили для кнопки закрытия InfoWindow */
-.gm-style .gm-style-iw-d {
-    overflow: hidden !important;
-}
-
-.gm-style .gm-style-iw-c {
-    padding: 0;
-    max-width: 350px;
-}
-
-.gm-style .gm-style-iw-t::after {
-    background: #fff;
-}
-
-/* Стили для контента InfoWindow */
-.place-info {
-    padding: 10px;
-    color: #333;
-    background: #fff;
-    max-width: 350px;
-}
-
-.place-info h4 {
-    margin: 0 0 8px 0;
-    color: #333;
-    font-size: 16px;
-    font-weight: bold;
-}
-
-.place-info p {
-    margin: 4px 0;
-    color: #333;
-    font-size: 14px;
-}
-
-.place-info .place-type {
-    color: #666;
-    font-style: italic;
-}
-
-.place-info a {
-    color: #1a73e8;
-    text-decoration: none;
-}
-
-.place-info a:hover {
-    text-decoration: underline;
-}
-
-.place-info ul {
-    margin: 5px 0;
-    padding-left: 20px;
-}
-
-.place-info li {
-    margin: 3px 0;
-    color: #333;
-    font-size: 14px;
-}
-
-/* Стили для фотографии в InfoWindow */
-.place-photo {
-    margin-bottom: 10px;
-    text-align: center;
-}
-
-.place-photo img {
-    max-width: 100%;
-    height: auto;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-/* Обновляем стили для InfoWindow с учетом фотографии */
-.gm-style .gm-style-iw-d {
-    max-height: 500px !important;
-    overflow-y: auto !important;
-}
-
 /* Стили для страницы деталей места */
 .place-details {
     position: fixed;
@@ -285,7 +125,7 @@ button {
     left: 0;
     width: 100%;
     height: 100%;
-    background: var(--background-color);
+    background: #000;
     z-index: 1000;
     display: flex;
     flex-direction: column;
@@ -293,8 +133,8 @@ button {
 
 .place-header {
     padding: 20px;
-    background: var(--header-background);
-    border-bottom: 1px solid var(--border-color);
+    background: rgba(255,255,255,0.1);
+    border-bottom: 1px solid rgba(255,255,255,0.2);
     display: flex;
     align-items: center;
     gap: 15px;
@@ -304,15 +144,21 @@ button {
 .back-button {
     background: none;
     border: none;
-    font-size: 24px;
     cursor: pointer;
     padding: 5px;
-    color: var(--text-color);
+    color: #fff;
     transition: color 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .back-button:hover {
-    color: var(--primary-color);
+    color: rgba(255,255,255,0.7);
+}
+
+.back-button .material-icons {
+    font-size: 24px;
 }
 
 .place-content {
@@ -322,14 +168,62 @@ button {
     max-width: 800px;
     margin: 0 auto;
     width: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
-.place-map {
-    height: 300px;
-    margin: 20px 0;
+.place-info {
+    margin-bottom: 30px;
+    background: rgba(255,255,255,0.1);
+    padding: 20px;
     border-radius: 12px;
-    overflow: hidden;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.place-info h2 {
+    margin-bottom: 20px;
+    color: #fff;
+    font-size: 1.5em;
+}
+
+.place-info p {
+    margin: 15px 0;
+    line-height: 1.6;
+    color: #fff;
+}
+
+.place-info strong {
+    color: #fff;
+}
+
+.place-info a {
+    color: #fff;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.place-info a:hover {
+    color: rgba(255,255,255,0.7);
+}
+
+.place-info ul {
+    list-style: none;
+    padding: 0;
+    margin: 15px 0;
+}
+
+.place-info li {
+    margin: 10px 0;
+    padding-left: 20px;
+    position: relative;
+    color: #fff;
+}
+
+.place-info li::before {
+    content: "•";
+    color: #fff;
+    position: absolute;
+    left: 0;
 }
 
 .place-photos {
@@ -338,8 +232,9 @@ button {
     overflow-x: auto;
     padding: 15px 0;
     margin: 20px 0;
+    min-height: 300px;
     scrollbar-width: thin;
-    scrollbar-color: var(--primary-color) var(--background-color);
+    scrollbar-color: rgba(255,255,255,0.3) rgba(0,0,0,0.1);
 }
 
 .place-photos::-webkit-scrollbar {
@@ -347,18 +242,18 @@ button {
 }
 
 .place-photos::-webkit-scrollbar-track {
-    background: var(--background-color);
+    background: rgba(0,0,0,0.1);
 }
 
 .place-photos::-webkit-scrollbar-thumb {
-    background-color: var(--primary-color);
+    background-color: rgba(255,255,255,0.3);
     border-radius: 4px;
 }
 
 .place-photo {
     flex: 0 0 auto;
     width: 250px;
-    height: 180px;
+    height: 300px;
     border-radius: 12px;
     overflow: hidden;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -375,56 +270,14 @@ button {
     object-fit: cover;
 }
 
-.place-info {
-    margin-top: 30px;
-    background: var(--card-background);
-    padding: 20px;
+.place-map {
+    height: 300px;
+    min-height: 300px;
+    margin: 20px 0;
     border-radius: 12px;
+    overflow: hidden;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.place-info h2 {
-    margin-bottom: 20px;
-    color: var(--primary-color);
-    font-size: 1.5em;
-}
-
-.place-info p {
-    margin: 15px 0;
-    line-height: 1.6;
-}
-
-.place-info strong {
-    color: var(--primary-color);
-}
-
-.place-info a {
-    color: var(--primary-color);
-    text-decoration: none;
-    transition: color 0.3s ease;
-}
-
-.place-info a:hover {
-    color: var(--primary-color-dark);
-}
-
-.place-info ul {
-    list-style: none;
-    padding: 0;
-    margin: 15px 0;
-}
-
-.place-info li {
-    margin: 10px 0;
-    padding-left: 20px;
-    position: relative;
-}
-
-.place-info li::before {
-    content: "•";
-    color: var(--primary-color);
-    position: absolute;
-    left: 0;
+    width: 100%;
 }
 
 .place-loading {
@@ -433,14 +286,14 @@ button {
     align-items: center;
     justify-content: center;
     padding: 40px;
-    background: var(--card-background);
+    background: rgba(255,255,255,0.1);
     border-radius: 12px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .place-loader {
-    border: 4px solid var(--background-color);
-    border-top: 4px solid var(--primary-color);
+    border: 4px solid rgba(255,255,255,0.1);
+    border-top: 4px solid #fff;
     border-radius: 50%;
     width: 40px;
     height: 40px;
@@ -448,10 +301,10 @@ button {
 }
 
 .place-error {
-    color: var(--error-color);
+    color: #ff6b6b;
     padding: 20px;
     text-align: center;
-    background: var(--card-background);
+    background: rgba(255,107,107,0.1);
     border-radius: 12px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }

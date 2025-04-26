@@ -37,8 +37,13 @@ class FoodFinder {
         this.highlightedMarker = null;
         this.placesService = null;
         
+        // Скрываем карту при инициализации
+        const mapElement = document.getElementById('map');
+        if (mapElement) {
+            mapElement.style.display = 'none';
+        }
+        
         this.initializeEventListeners();
-        this.initializeMap();
     }
 
     initializeEventListeners() {
@@ -87,9 +92,6 @@ class FoodFinder {
 
             this.placesService = new google.maps.places.PlacesService(this.map);
             console.log('Карта инициализирована успешно');
-            
-            // Показываем карту после инициализации
-            this.showMap();
         } catch (error) {
             console.error('Ошибка при инициализации карты:', error);
             this.showError("Ошибка при инициализации карты. Пожалуйста, проверьте API ключ.");
@@ -105,16 +107,38 @@ class FoodFinder {
         this.showLoading();
 
         try {
+            console.log('Запрашиваем геолокацию...');
             const position = await this.getCurrentPosition();
+            console.log('Получены координаты:', position.coords);
+            
             const { latitude, longitude } = position.coords;
             
+            if (!latitude || !longitude) {
+                throw new Error('Не удалось получить координаты');
+            }
+            
             console.log('Координаты от браузера:', { latitude, longitude });
+            
+            // Инициализируем карту только после получения координат
+            if (!this.map) {
+                this.initializeMap();
+            }
             
             this.updateMapPosition(latitude, longitude);
             await this.searchPlaces(latitude, longitude);
         } catch (error) {
             console.error('Ошибка при получении геолокации:', error);
-            this.showError("Ошибка при определении местоположения");
+            let errorMessage = "Ошибка при определении местоположения";
+            
+            if (error.code === error.PERMISSION_DENIED) {
+                errorMessage = "Доступ к геолокации запрещен. Пожалуйста, разрешите доступ в настройках браузера.";
+            } else if (error.code === error.POSITION_UNAVAILABLE) {
+                errorMessage = "Информация о местоположении недоступна";
+            } else if (error.code === error.TIMEOUT) {
+                errorMessage = "Время ожидания определения местоположения истекло";
+            }
+            
+            this.showError(errorMessage);
         }
     }
 
@@ -133,20 +157,115 @@ class FoodFinder {
             console.log('Координаты от браузера:', { latitude, longitude });
             
             this.updateMapPosition(latitude, longitude);
-            await this.searchLuckyPlace(latitude, longitude);
+            
+            const request = {
+                location: new google.maps.LatLng(latitude, longitude),
+                radius: 500, // Уменьшаем радиус до 500 метров
+                types: ['restaurant', 'cafe', 'bar', 'food', 'meal_takeaway', 'meal_delivery'],
+                language: 'ru'
+            };
+
+            console.log('Выполняем поиск:', request);
+
+            const placesService = new google.maps.places.PlacesService(this.map);
+            const results = await new Promise((resolve, reject) => {
+                placesService.nearbySearch(request, (results, status) => {
+                    if (status === google.maps.places.PlacesServiceStatus.OK) {
+                        resolve(results);
+                    } else {
+                        reject(new Error(`Ошибка поиска: ${status}`));
+                    }
+                });
+            });
+
+            console.log('Результаты поиска:', results);
+            
+            if (!results || results.length === 0) {
+                this.showError("К сожалению, поблизости нет подходящих мест 😞");
+                return;
+            }
+
+            // Обрабатываем найденные места
+            const places = results.map(place => {
+                try {
+                    const coords = {
+                        lat: place.geometry.location.lat(),
+                        lng: place.geometry.location.lng()
+                    };
+                    
+                    const name = place.name || 'Без названия';
+                    const address = place.vicinity || 'Адрес не указан';
+                    
+                    // Проверяем расстояние
+                    const distance = this.calculateDistance(
+                        latitude, longitude,
+                        coords.lat, coords.lng
+                    );
+                    
+                    // Если место слишком далеко, пропускаем его
+                    if (distance > 500) {
+                        return null;
+                    }
+
+                    // Определяем тип места на основе types из API
+                    const placeType = this.determinePlaceTypeFromTypes(place.types);
+                    if (!placeType) {
+                        return null;
+                    }
+                    
+                    return {
+                        name,
+                        address,
+                        lat: coords.lat,
+                        lng: coords.lng,
+                        distance,
+                        type: placeType,
+                        placeId: place.place_id
+                    };
+                } catch (error) {
+                    console.error('Ошибка при обработке места:', error, place);
+                    return null;
+                }
+            }).filter(place => place !== null)
+              .sort((a, b) => a.distance - b.distance);
+
+            console.log('Обработанные места:', places);
+            
+            if (places.length === 0) {
+                this.showError("К сожалению, поблизости нет подходящих мест 😞");
+                return;
+            }
+
+            // Выбираем случайное место
+            const randomIndex = Math.floor(Math.random() * places.length);
+            const luckyPlace = places[randomIndex];
+            
+            // Сразу открываем страницу деталей
+            this.openPlaceDetails(luckyPlace);
         } catch (error) {
-            console.error('Ошибка при получении геолокации:', error);
-            this.showError("Ошибка при определении местоположения");
+            console.error('Ошибка при поиске:', error);
+            this.showError("Ошибка при поиске мест");
         }
     }
 
     getCurrentPosition() {
         return new Promise((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0
-            });
+            console.log('Запуск getCurrentPosition...');
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    console.log('Успешно получена позиция:', position);
+                    resolve(position);
+                },
+                (error) => {
+                    console.error('Ошибка геолокации:', error);
+                    reject(error);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
         });
     }
 
@@ -161,12 +280,21 @@ class FoodFinder {
         if (this.userMarker) {
             this.userMarker.setPosition(position);
         } else {
+            const svg = `
+                <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                    <text x="20" y="20" font-size="30" text-anchor="middle" dominant-baseline="middle" fill="red">📍</text>
+                </svg>
+            `;
+            const encodedSvg = encodeURIComponent(svg).replace(/'/g, '%27').replace(/"/g, '%22');
+            
             this.userMarker = new google.maps.Marker({
                 position: position,
                 map: this.map,
                 title: "Ваше местоположение",
                 icon: {
-                    url: "http://maps.google.com/mapfiles/ms/icons/red-dot.png"
+                    url: 'data:image/svg+xml;charset=utf-8,' + encodedSvg,
+                    scaledSize: new google.maps.Size(40, 40),
+                    anchor: new google.maps.Point(20, 20)
                 }
             });
         }
@@ -225,25 +353,21 @@ class FoodFinder {
             // Обрабатываем найденные места
             this.allPlaces = results.map(place => {
                 try {
-                    console.log('Обрабатываем место:', place);
+                    console.log('Обрабатываем место:', place.name, 'с типами:', place.types);
                     
                     const coords = {
                         lat: place.geometry.location.lat(),
                         lng: place.geometry.location.lng()
                     };
-                    console.log('Координаты места:', coords);
                     
                     const name = place.name || 'Без названия';
                     const address = place.vicinity || 'Адрес не указан';
-                    
-                    console.log('Название и адрес:', { name, address });
                     
                     // Проверяем расстояние
                     const distance = this.calculateDistance(
                         latitude, longitude,
                         coords.lat, coords.lng
                     );
-                    console.log('Расстояние:', distance, 'метров');
                     
                     // Если место слишком далеко, пропускаем его
                     if (distance > CONFIG.search.radius) {
@@ -253,6 +377,8 @@ class FoodFinder {
 
                     // Определяем тип места на основе types из API
                     const placeType = this.determinePlaceTypeFromTypes(place.types);
+                    console.log('Определен тип места:', placeType, 'для', name);
+                    
                     if (!placeType) {
                         console.log('Место не подходит по категории, пропускаем');
                         return null;
@@ -265,7 +391,8 @@ class FoodFinder {
                         lng: coords.lng,
                         distance,
                         type: placeType,
-                        placeId: place.place_id
+                        placeId: place.place_id,
+                        types: place.types // Сохраняем оригинальные типы
                     };
                 } catch (error) {
                     console.error('Ошибка при обработке места:', error, place);
@@ -281,100 +408,9 @@ class FoodFinder {
                 return;
             }
             
+            // Показываем карту и отображаем результаты
+            this.showMap();
             this.displayResults();
-        } catch (error) {
-            console.error('Ошибка при поиске:', error);
-            this.showError("Ошибка при поиске мест");
-        }
-    }
-
-    async searchLuckyPlace(latitude, longitude) {
-        console.log('Начинаем поиск случайного места...', { latitude, longitude });
-        
-        const request = {
-            location: new google.maps.LatLng(latitude, longitude),
-            radius: CONFIG.search.radius,
-            types: CONFIG.search.placeTypes,
-            language: 'ru'
-        };
-
-        console.log('Выполняем поиск:', request);
-
-        try {
-            const placesService = new google.maps.places.PlacesService(this.map);
-            const results = await new Promise((resolve, reject) => {
-                placesService.nearbySearch(request, (results, status) => {
-                    if (status === google.maps.places.PlacesServiceStatus.OK) {
-                        resolve(results);
-                    } else {
-                        reject(new Error(`Ошибка поиска: ${status}`));
-                    }
-                });
-            });
-
-            console.log('Результаты поиска:', results);
-            
-            if (!results || results.length === 0) {
-                this.showError("К сожалению, поблизости нет подходящих мест 😞");
-                return;
-            }
-
-            // Обрабатываем найденные места
-            this.allPlaces = results.map(place => {
-                try {
-                    console.log('Обрабатываем место:', place);
-                    
-                    const coords = {
-                        lat: place.geometry.location.lat(),
-                        lng: place.geometry.location.lng()
-                    };
-                    console.log('Координаты места:', coords);
-                    
-                    const name = place.name || 'Без названия';
-                    const address = place.vicinity || 'Адрес не указан';
-                    
-                    console.log('Название и адрес:', { name, address });
-                    
-                    // Проверяем расстояние
-                    const distance = this.calculateDistance(
-                        latitude, longitude,
-                        coords.lat, coords.lng
-                    );
-                    console.log('Расстояние:', distance, 'метров');
-                    
-                    // Если место слишком далеко, пропускаем его
-                    if (distance > CONFIG.search.radius) {
-                        console.log('Место слишком далеко, пропускаем');
-                        return null;
-                    }
-                    
-                    return {
-                        name,
-                        address,
-                        lat: coords.lat,
-                        lng: coords.lng,
-                        distance,
-                        type: this.determinePlaceType(name),
-                        placeId: place.place_id
-                    };
-                } catch (error) {
-                    console.error('Ошибка при обработке места:', error, place);
-                    return null;
-                }
-            }).filter(place => place !== null)
-              .sort((a, b) => a.distance - b.distance);
-
-            console.log('Обработанные места:', this.allPlaces);
-            
-            if (this.allPlaces.length === 0) {
-                this.showError("К сожалению, поблизости нет подходящих мест 😞");
-                return;
-            }
-
-            const randomIndex = Math.floor(Math.random() * this.allPlaces.length);
-            const luckyPlace = this.allPlaces[randomIndex];
-            
-            this.displayLuckyPlace(luckyPlace);
         } catch (error) {
             console.error('Ошибка при поиске:', error);
             this.showError("Ошибка при поиске мест");
@@ -406,6 +442,8 @@ class FoodFinder {
     determinePlaceTypeFromTypes(types) {
         if (!types || !Array.isArray(types)) return null;
 
+        console.log('Определяем тип места из:', types);
+
         // Словарь соответствия типов Google Places нашим категориям
         const typeMapping = {
             'restaurant': 'restaurant',
@@ -422,10 +460,12 @@ class FoodFinder {
         // Ищем первый подходящий тип
         for (const type of types) {
             if (typeMapping[type]) {
+                console.log('Найден тип:', type, '->', typeMapping[type]);
                 return typeMapping[type];
             }
         }
 
+        console.log('Тип не определен');
         return null;
     }
 
@@ -448,6 +488,7 @@ class FoodFinder {
         }
 
         resultsDiv.innerHTML = html;
+        // Добавляем маркеры только для видимых мест
         this.addPlaceMarkers(visiblePlaces);
         this.addPlaceClickHandlers();
     }
@@ -485,20 +526,65 @@ class FoodFinder {
         let html = "<h3>Все места:</h3>";
         html += this.allPlaces.map((place, index) => this.createPlaceHtml(place, index)).join('');
         resultsDiv.innerHTML = html;
+        
+        // Добавляем маркеры для всех мест
         this.addPlaceMarkers(this.allPlaces);
         this.addPlaceClickHandlers();
+        
+        // Показываем карту, если она еще не видна
+        this.showMap();
     }
 
     addPlaceMarkers(places = this.allPlaces) {
+        console.log('Добавляем маркеры для мест:', places.map(p => p.name));
         this.clearPlaceMarkers();
         
-        this.placeMarkers = places.map(place => {
+        // Создаем копию массива мест, чтобы не потерять информацию о типах
+        const placesCopy = places.map(place => ({
+            ...place,
+            originalType: place.type // Сохраняем оригинальный тип
+        }));
+        
+        this.placeMarkers = placesCopy.map(place => {
+            // Определяем эмоджи в зависимости от типа места
+            let emoji;
+            console.log('Определяем эмоджи для места:', place.name, 'тип:', place.originalType, 'типы:', place.types);
+            
+            switch(place.originalType) {
+                case 'bar':
+                case 'pub':
+                    emoji = '🍺';
+                    break;
+                case 'restaurant':
+                    emoji = '🍽️';
+                    break;
+                case 'cafe':
+                    emoji = '☕';
+                    break;
+                case 'night_club':
+                    emoji = '🎉';
+                    break;
+                default:
+                    emoji = '🍽️';
+            }
+            
+            console.log('Выбранное эмоджи:', emoji, 'для места:', place.name);
+
+            const svg = `
+                <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                    <text x="20" y="20" font-size="30" text-anchor="middle" dominant-baseline="middle" fill="black">${emoji}</text>
+                </svg>
+            `;
+            const encodedSvg = encodeURIComponent(svg).replace(/'/g, '%27').replace(/"/g, '%22');
+
             const marker = new google.maps.Marker({
                 position: { lat: place.lat, lng: place.lng },
                 map: this.map,
                 title: place.name,
                 icon: {
-                    url: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
+                    url: 'data:image/svg+xml;charset=utf-8,' + encodedSvg,
+                    scaledSize: new google.maps.Size(40, 40),
+                    anchor: new google.maps.Point(20, 20)
                 }
             });
             
@@ -506,7 +592,9 @@ class FoodFinder {
                 this.openPlaceDetails(place);
             });
             
-            marker.placeIndex = this.allPlaces.indexOf(place);
+            // Сохраняем индекс места в оригинальном массиве
+            const originalIndex = this.allPlaces.findIndex(p => p.placeId === place.placeId);
+            marker.placeIndex = originalIndex;
             return marker;
         });
     }
@@ -528,6 +616,7 @@ class FoodFinder {
         // Формируем URL для страницы деталей
         const url = new URL('place-details.html', window.location.href);
         url.searchParams.set('placeId', place.placeId);
+        url.searchParams.set('placeType', place.type);
         
         if (userPosition) {
             url.searchParams.set('userLat', userPosition.lat());
@@ -540,17 +629,75 @@ class FoodFinder {
 
     highlightMarker(marker) {
         if (this.highlightedMarker) {
+            // Возвращаем стандартную иконку
+            const place = this.allPlaces[this.highlightedMarker.placeIndex];
+            let emoji;
+            switch(place.type) {
+                case 'bar':
+                case 'pub':
+                    emoji = '🍺';
+                    break;
+                case 'restaurant':
+                    emoji = '🍽️';
+                    break;
+                case 'cafe':
+                    emoji = '☕';
+                    break;
+                case 'night_club':
+                    emoji = '🎉';
+                    break;
+                default:
+                    emoji = '🍽️';
+            }
+
+            const svg = `
+                <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                    <text x="20" y="20" font-size="30" text-anchor="middle" dominant-baseline="middle" fill="black">${emoji}</text>
+                </svg>
+            `;
+            const encodedSvg = encodeURIComponent(svg).replace(/'/g, '%27').replace(/"/g, '%22');
+
             this.highlightedMarker.setIcon({
-                url: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
+                url: 'data:image/svg+xml;charset=utf-8,' + encodedSvg,
+                scaledSize: new google.maps.Size(40, 40),
+                anchor: new google.maps.Point(20, 20)
             });
-            this.highlightedMarker.infoWindow.close();
         }
         
         this.highlightedMarker = marker;
+        // Устанавливаем выделенную иконку
+        const place = this.allPlaces[marker.placeIndex];
+        let emoji;
+        switch(place.type) {
+            case 'bar':
+            case 'pub':
+                emoji = '🍺';
+                break;
+            case 'restaurant':
+                emoji = '🍽️';
+                break;
+            case 'cafe':
+                emoji = '☕';
+                break;
+            case 'night_club':
+                emoji = '🎉';
+                break;
+            default:
+                emoji = '🍽️';
+        }
+
+        const svg = `
+            <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                <text x="20" y="20" font-size="30" text-anchor="middle" dominant-baseline="middle" fill="red">${emoji}</text>
+            </svg>
+        `;
+        const encodedSvg = encodeURIComponent(svg).replace(/'/g, '%27').replace(/"/g, '%22');
+
         marker.setIcon({
-            url: "http://maps.google.com/mapfiles/ms/icons/red-dot.png"
+            url: 'data:image/svg+xml;charset=utf-8,' + encodedSvg,
+            scaledSize: new google.maps.Size(40, 40),
+            anchor: new google.maps.Point(20, 20)
         });
-        marker.infoWindow.open(this.map, marker);
         this.map.setCenter(marker.getPosition());
         
         document.getElementById('map').scrollIntoView({
@@ -587,9 +734,6 @@ class FoodFinder {
         this.placeMarkers.forEach(marker => {
             if (marker) {
                 marker.setMap(null);
-                if (marker.infoWindow) {
-                    marker.infoWindow.close();
-                }
             }
         });
         this.placeMarkers = [];
