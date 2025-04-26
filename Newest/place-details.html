@@ -4,30 +4,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Детали места</title>
-    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="place-details.css">
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDA1E3UCbB_-wIEbiX5gJn4lLVPB5vy85w&libraries=places&language=ru"></script>
 </head>
 <body>
-    <div id="placeDetails" class="place-details">
+    <div class="container">
         <div class="place-header">
             <button class="back-button" onclick="window.history.back()">
                 <span class="material-icons">arrow_back</span>
             </button>
-            <h1 id="placeName">Загрузка...</h1>
+            <h1 class="place-name" id="placeName">Загрузка...</h1>
         </div>
-        <div class="place-content">
-            <div id="placePhotos" class="place-photos"></div>
-            <div id="placeInfo" class="place-info">
-                <div class="place-loading">
-                    <div class="place-loader"></div>
-                    <p>Загружаем информацию...</p>
-                </div>
+        
+        <main class="place-content">
+            <div class="place-photos">
+                <div class="place-photos-container" id="placePhotos"></div>
             </div>
-            <div id="placeMap" class="place-map"></div>
-        </div>
-    </div>
+            
+            <div class="place-info" id="placeInfo">
+                <h2>Информация</h2>
+                <p>Загрузка информации...</p>
+            </div>
 
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDA1E3UCbB_-wIEbiX5gJn4lLVPB5vy85w&libraries=places&language=ru"></script>
+            <div class="place-map" id="placeMap"></div>
+        </main>
+    </div>
+    
     <script src="place-details.js"></script>
 </body>
 </html> 

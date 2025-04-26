@@ -37,6 +37,9 @@ class FoodFinder {
         this.highlightedMarker = null;
         this.placesService = null;
         
+        // Загружаем кешированные результаты при инициализации
+        this.loadCachedResults();
+        
         // Скрываем карту при инициализации
         const mapElement = document.getElementById('map');
         if (mapElement) {
@@ -156,20 +159,29 @@ class FoodFinder {
             
             console.log('Координаты от браузера:', { latitude, longitude });
             
+            // Инициализируем карту только после получения координат
+            if (!this.map) {
+                this.initializeMap();
+            }
+            
             this.updateMapPosition(latitude, longitude);
             
+            // Используем существующий placesService вместо создания нового
+            if (!this.placesService) {
+                this.placesService = new google.maps.places.PlacesService(this.map);
+            }
+
             const request = {
                 location: new google.maps.LatLng(latitude, longitude),
-                radius: 500, // Уменьшаем радиус до 500 метров
+                radius: 500,
                 types: ['restaurant', 'cafe', 'bar', 'food', 'meal_takeaway', 'meal_delivery'],
                 language: 'ru'
             };
 
             console.log('Выполняем поиск:', request);
 
-            const placesService = new google.maps.places.PlacesService(this.map);
             const results = await new Promise((resolve, reject) => {
-                placesService.nearbySearch(request, (results, status) => {
+                this.placesService.nearbySearch(request, (results, status) => {
                     if (status === google.maps.places.PlacesServiceStatus.OK) {
                         resolve(results);
                     } else {
@@ -185,49 +197,47 @@ class FoodFinder {
                 return;
             }
 
-            // Обрабатываем найденные места
-            const places = results.map(place => {
-                try {
-                    const coords = {
-                        lat: place.geometry.location.lat(),
-                        lng: place.geometry.location.lng()
-                    };
-                    
-                    const name = place.name || 'Без названия';
-                    const address = place.vicinity || 'Адрес не указан';
-                    
-                    // Проверяем расстояние
-                    const distance = this.calculateDistance(
-                        latitude, longitude,
-                        coords.lat, coords.lng
-                    );
-                    
-                    // Если место слишком далеко, пропускаем его
-                    if (distance > 500) {
-                        return null;
-                    }
+            // Упрощаем обработку результатов
+            const places = results
+                .map(place => {
+                    try {
+                        const coords = {
+                            lat: place.geometry.location.lat(),
+                            lng: place.geometry.location.lng()
+                        };
+                        
+                        const distance = this.calculateDistance(
+                            latitude, longitude,
+                            coords.lat, coords.lng
+                        );
+                        
+                        // Если место слишком далеко, пропускаем его
+                        if (distance > 500) {
+                            return null;
+                        }
 
-                    // Определяем тип места на основе types из API
-                    const placeType = this.determinePlaceTypeFromTypes(place.types);
-                    if (!placeType) {
+                        // Определяем тип места
+                        const placeType = this.determinePlaceTypeFromTypes(place.types);
+                        if (!placeType) {
+                            return null;
+                        }
+                        
+                        return {
+                            name: place.name || 'Без названия',
+                            address: place.vicinity || 'Адрес не указан',
+                            lat: coords.lat,
+                            lng: coords.lng,
+                            distance,
+                            type: placeType,
+                            placeId: place.place_id
+                        };
+                    } catch (error) {
+                        console.error('Ошибка при обработке места:', error, place);
                         return null;
                     }
-                    
-                    return {
-                        name,
-                        address,
-                        lat: coords.lat,
-                        lng: coords.lng,
-                        distance,
-                        type: placeType,
-                        placeId: place.place_id
-                    };
-                } catch (error) {
-                    console.error('Ошибка при обработке места:', error, place);
-                    return null;
-                }
-            }).filter(place => place !== null)
-              .sort((a, b) => a.distance - b.distance);
+                })
+                .filter(place => place !== null)
+                .sort((a, b) => a.distance - b.distance);
 
             console.log('Обработанные места:', places);
             
@@ -240,8 +250,13 @@ class FoodFinder {
             const randomIndex = Math.floor(Math.random() * places.length);
             const luckyPlace = places[randomIndex];
             
-            // Сразу открываем страницу деталей
-            this.openPlaceDetails(luckyPlace);
+            // Показываем результат на странице перед переходом
+            this.displayLuckyPlace(luckyPlace);
+            
+            // Небольшая задержка перед переходом для лучшего UX
+            setTimeout(() => {
+                this.openPlaceDetails(luckyPlace);
+            }, 500);
         } catch (error) {
             console.error('Ошибка при поиске:', error);
             this.showError("Ошибка при поиске мест");
@@ -322,6 +337,23 @@ class FoodFinder {
     async searchPlaces(latitude, longitude) {
         console.log('Начинаем поиск мест...', { latitude, longitude });
         
+        // Проверяем, есть ли кешированные результаты для этих координат
+        const cacheKey = `search_${latitude}_${longitude}`;
+        const cachedResults = sessionStorage.getItem(cacheKey);
+        
+        if (cachedResults) {
+            console.log('Используем кешированные результаты');
+            const { places, timestamp } = JSON.parse(cachedResults);
+            
+            // Проверяем, не устарели ли результаты (кеш действителен 5 минут)
+            if (Date.now() - timestamp < 5 * 60 * 1000) {
+                this.allPlaces = places;
+                this.showMap();
+                this.displayResults();
+                return;
+            }
+        }
+
         const request = {
             location: new google.maps.LatLng(latitude, longitude),
             radius: CONFIG.search.radius,
@@ -392,7 +424,7 @@ class FoodFinder {
                         distance,
                         type: placeType,
                         placeId: place.place_id,
-                        types: place.types // Сохраняем оригинальные типы
+                        types: place.types
                     };
                 } catch (error) {
                     console.error('Ошибка при обработке места:', error, place);
@@ -408,12 +440,46 @@ class FoodFinder {
                 return;
             }
             
+            // Кешируем результаты
+            this.cacheResults(cacheKey, this.allPlaces);
+            
             // Показываем карту и отображаем результаты
             this.showMap();
             this.displayResults();
         } catch (error) {
             console.error('Ошибка при поиске:', error);
             this.showError("Ошибка при поиске мест");
+        }
+    }
+
+    loadCachedResults() {
+        try {
+            const cachedResults = sessionStorage.getItem('last_search');
+            if (cachedResults) {
+                const { places, timestamp } = JSON.parse(cachedResults);
+                
+                // Проверяем, не устарели ли результаты (кеш действителен 5 минут)
+                if (Date.now() - timestamp < 5 * 60 * 1000) {
+                    this.allPlaces = places;
+                    console.log('Загружены кешированные результаты');
+                }
+            }
+        } catch (error) {
+            console.error('Ошибка при загрузке кешированных результатов:', error);
+        }
+    }
+
+    cacheResults(key, places) {
+        try {
+            const data = {
+                places,
+                timestamp: Date.now()
+            };
+            sessionStorage.setItem(key, JSON.stringify(data));
+            sessionStorage.setItem('last_search', JSON.stringify(data));
+            console.log('Результаты закешированы');
+        } catch (error) {
+            console.error('Ошибка при кешировании результатов:', error);
         }
     }
 
@@ -707,8 +773,34 @@ class FoodFinder {
 
     refreshMap() {
         if (this.map) {
+            // Сохраняем текущий центр и зум
+            const center = this.map.getCenter();
+            const zoom = this.map.getZoom();
+            
+            // Обновляем размер карты
             google.maps.event.trigger(this.map, 'resize');
-            alert("Карта обновлена");
+            
+            // Восстанавливаем центр и зум
+            this.map.setCenter(center);
+            this.map.setZoom(zoom);
+            
+            // Перерисовываем все маркеры
+            if (this.userMarker) {
+                this.userMarker.setMap(null);
+                this.userMarker.setMap(this.map);
+            }
+            
+            this.placeMarkers.forEach(marker => {
+                if (marker) {
+                    marker.setMap(null);
+                    marker.setMap(this.map);
+                }
+            });
+            
+            // Если есть выделенный маркер, восстанавливаем его выделение
+            if (this.highlightedMarker) {
+                this.highlightMarker(this.highlightedMarker);
+            }
         }
     }
 
