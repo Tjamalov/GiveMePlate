@@ -52,7 +52,9 @@ const server = http.createServer((req, res) => {
             
             // Заменяем переменные окружения только в HTML файлах
             if (contentType === 'text/html') {
-                content = content.toString().replace(/%GOOGLE_MAPS_API_KEY%/g, GOOGLE_MAPS_API_KEY);
+                content = content.toString()
+                    .replace(/%GOOGLE_MAPS_API_KEY%/g, GOOGLE_MAPS_API_KEY)
+                    .replace(/'%GOOGLE_MAPS_API_KEY%'/g, `'${GOOGLE_MAPS_API_KEY}'`);
             }
             
             res.end(content);
