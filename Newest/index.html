@@ -8,13 +8,10 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="styles.css" />
     <script>
-        // Проверяем, есть ли переменные Netlify (продакшен) или берём из .env (разработка)
-        const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY;
-        if (!googleMapsApiKey) {
-            console.error('Google Maps API key is not set in environment variables');
-        }
+        // В продакшене (Netlify) переменные окружения будут заменены при сборке
+        window.GOOGLE_MAPS_API_KEY = '%GOOGLE_MAPS_API_KEY%';
     </script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places&language=ru" async defer></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=%GOOGLE_MAPS_API_KEY%&libraries=places&language=ru" async defer></script>
 </head>
 <body>
     <h1>Искать еду</h1>
