@@ -69,15 +69,15 @@ body {
     overflow-y: hidden;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
-    min-width: 100%;
+    width: 100%;
     padding: 10px 0;
+    gap: 10px;
 }
 
 .place-photo {
     flex: 0 0 auto;
     width: 300px;
     height: 200px;
-    margin-right: 10px;
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);

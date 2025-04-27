@@ -4,10 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Детали места</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700&display=swap" rel="stylesheet">
+    <script>
+        // Проверяем, есть ли переменные Netlify (продакшен) или берём из .env (разработка)
+        const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyDA1E3UCbB_-wIEbiX5gJn4lLVPB5vy85w';
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDA1E3UCbB_-wIEbiX5gJn4lLVPB5vy85w&libraries=places&language=ru"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="place-details.css">
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDA1E3UCbB_-wIEbiX5gJn4lLVPB5vy85w&libraries=places&language=ru"></script>
 </head>
 <body>
     <div class="container">
