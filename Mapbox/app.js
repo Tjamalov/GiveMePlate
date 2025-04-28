@@ -5,6 +5,7 @@ class FoodFinder {
         this.placeMarkers = [];
         this.allPlaces = [];
         this.highlightedMarker = null;
+        this.db = new PlacesDatabase();
         
         this.initializeEventListeners();
     }
@@ -101,13 +102,91 @@ class FoodFinder {
     }
 
     async searchPlaces(latitude, longitude) {
-        // TODO: Implement Mapbox Places API search
-        this.showError("Функция поиска мест пока не реализована");
+        try {
+            const places = await this.db.searchPlaces(latitude, longitude);
+            this.processPlaces(places, latitude, longitude);
+            this.displayResults();
+        } catch (error) {
+            this.showError("Ошибка при поиске мест: " + error.message);
+        }
     }
 
     async searchLuckyPlace(latitude, longitude) {
-        // TODO: Implement Mapbox Places API search for lucky place
-        this.showError("Функция 'Мне повезёт' пока не реализована");
+        try {
+            const places = await this.db.searchPlaces(latitude, longitude, 500);
+            this.processPlaces(places, latitude, longitude);
+            
+            if (this.allPlaces.length === 0) {
+                this.showError("К сожалению, поблизости нет подходящих мест 😞");
+                return;
+            }
+
+            const randomIndex = Math.floor(Math.random() * this.allPlaces.length);
+            const luckyPlace = this.allPlaces[randomIndex];
+            
+            this.displayLuckyPlace(luckyPlace);
+        } catch (error) {
+            this.showError("Ошибка при поиске случайного места: " + error.message);
+        }
+    }
+
+    processPlaces(places, userLat, userLon) {
+        this.allPlaces = places.map(place => ({
+            ...place,
+            distance: this.calculateDistance(userLat, userLon, place.location.coordinates[1], place.location.coordinates[0])
+        })).sort((a, b) => a.distance - b.distance);
+    }
+
+    displayResults() {
+        const resultsDiv = document.getElementById('results');
+        
+        if (this.allPlaces.length === 0) {
+            resultsDiv.innerHTML = "Места не найдены поблизости 😞";
+            return;
+        }
+
+        let html = "<h3>Ближайшие места:</h3>";
+        const visiblePlaces = this.allPlaces.slice(0, 3);
+        html += visiblePlaces.map((place, index) => this.createPlaceHtml(place, index)).join('');
+        
+        if (this.allPlaces.length > 3) {
+            html += `<div class="show-more">
+                <button id="showAllBtn" onclick="app.showAllPlaces()">Показать всё (${this.allPlaces.length})</button>
+            </div>`;
+        }
+
+        resultsDiv.innerHTML = html;
+        this.addPlaceMarkers(visiblePlaces);
+        this.addPlaceClickHandlers();
+    }
+
+    createPlaceHtml(place, index) {
+        return `
+            <div class="place" data-index="${this.allPlaces.indexOf(place)}">
+                <strong>${place.name}</strong>
+                ${place.type ? `<span class="place-type">${place.type}</span>` : ''}
+                <div>${Math.round(place.distance)} м</div>
+                ${place.address || 'Адрес не указан'}
+            </div>
+        `;
+    }
+
+    addPlaceMarkers(places = this.allPlaces) {
+        this.clearPlaceMarkers();
+        
+        this.placeMarkers = places.map(place => {
+            const marker = new mapboxgl.Marker()
+                .setLngLat([place.location.coordinates[0], place.location.coordinates[1]])
+                .setPopup(new mapboxgl.Popup().setHTML(`
+                    <b>${place.name}</b><br>
+                    ${place.type ? `<small>${place.type}</small><br>` : ''}
+                    ${place.address || 'Адрес не указан'}
+                `))
+                .addTo(this.map);
+            
+            marker.placeIndex = this.allPlaces.indexOf(place);
+            return marker;
+        });
     }
 
     showLoading() {
