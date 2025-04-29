@@ -22,7 +22,6 @@ class FoodFinder {
     initializeEventListeners() {
         document.getElementById('findPlacesBtn').addEventListener('click', () => this.findPlaces());
         document.getElementById('luckyBtn').addEventListener('click', () => this.findLuckyPlace());
-        document.getElementById('refresh-map').addEventListener('click', () => this.refreshMap());
     }
 
     async findPlaces() {
@@ -115,7 +114,6 @@ class FoodFinder {
 
     showMap() {
         document.getElementById('map').style.display = 'block';
-        document.getElementById('refresh-map').style.display = 'block';
     }
 
     async searchPlaces(latitude, longitude) {
@@ -130,11 +128,12 @@ class FoodFinder {
 
     async searchLuckyPlace(latitude, longitude) {
         try {
-            const places = await this.db.searchPlaces(latitude, longitude, 500);
+            // Ищем места в радиусе 3 км (3000 метров)
+            const places = await this.db.searchPlaces(latitude, longitude, 3000);
             this.processPlaces(places, latitude, longitude);
             
             if (this.allPlaces.length === 0) {
-                this.showError("К сожалению, поблизости нет подходящих мест 😞");
+                this.showError("Вам не повезло, рядом ничего 😞");
                 return;
             }
 
@@ -160,9 +159,39 @@ class FoodFinder {
             return;
         }
 
-        // Просто сохраняем места как есть, без дополнительной обработки
-        this.allPlaces = places;
-        console.log('Processed places:', this.allPlaces);
+        // Calculate distances and add them to each place
+        this.allPlaces = places.map(place => {
+            if (!place.location || !place.location.coordinates) {
+                return { ...place, distance: null };
+            }
+            
+            const [placeLon, placeLat] = place.location.coordinates;
+            const distance = this.calculateDistance(userLat, userLon, placeLat, placeLon);
+            return { ...place, distance };
+        })
+        // Sort places by distance
+        .sort((a, b) => {
+            if (a.distance === null) return 1;
+            if (b.distance === null) return -1;
+            return a.distance - b.distance;
+        });
+
+        console.log('Processed places with distances:', this.allPlaces);
+    }
+
+    calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371e3; // Earth's radius in meters
+        const φ1 = lat1 * Math.PI/180;
+        const φ2 = lat2 * Math.PI/180;
+        const Δφ = (lat2-lat1) * Math.PI/180;
+        const Δλ = (lon2-lon1) * Math.PI/180;
+
+        const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ/2) * Math.sin(Δλ/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+        return Math.round(R * c); // Distance in meters
     }
 
     displayResults() {
@@ -173,16 +202,59 @@ class FoodFinder {
             return;
         }
 
+        // Показываем только первые 5 мест
+        const visiblePlaces = this.allPlaces.slice(0, 5);
+        const hasMorePlaces = this.allPlaces.length > 5;
+
+        let html = "<h3>Найденные места:</h3>";
+        html += visiblePlaces.map((place, index) => `
+            <div class="place" data-index="${index}">
+                <strong>${place.name || 'Без названия'}</strong>
+                ${place.type ? `<span class="place-type">${place.type}</span>` : ''}
+                ${place.distance ? `<div class="distance">${place.distance} м</div>` : ''}
+                ${place.revew ? `<div>${place.revew}</div>` : ''}
+            </div>
+        `).join('');
+
+        // Добавляем кнопку "Показать все", если есть еще места
+        if (hasMorePlaces) {
+            html += `
+                <button id="showAllBtn" class="show-all-btn">
+                    Показать все (${this.allPlaces.length})
+                </button>
+            `;
+        }
+
+        resultsDiv.innerHTML = html;
+        
+        // Добавляем маркеры только для видимых мест
+        this.addPlaceMarkers(visiblePlaces);
+        this.addPlaceClickHandlers();
+
+        // Добавляем обработчик для кнопки "Показать все"
+        if (hasMorePlaces) {
+            document.getElementById('showAllBtn').addEventListener('click', () => {
+                this.showAllPlaces();
+            });
+        }
+    }
+
+    showAllPlaces() {
+        const resultsDiv = document.getElementById('results');
+        
         let html = "<h3>Найденные места:</h3>";
         html += this.allPlaces.map((place, index) => `
             <div class="place" data-index="${index}">
                 <strong>${place.name || 'Без названия'}</strong>
                 ${place.type ? `<span class="place-type">${place.type}</span>` : ''}
+                ${place.distance ? `<div class="distance">${place.distance} м</div>` : ''}
                 ${place.revew ? `<div>${place.revew}</div>` : ''}
             </div>
         `).join('');
 
         resultsDiv.innerHTML = html;
+        
+        // Добавляем маркеры для всех мест
         this.addPlaceMarkers(this.allPlaces);
         this.addPlaceClickHandlers();
     }
@@ -201,6 +273,7 @@ class FoodFinder {
                 .setPopup(new mapboxgl.Popup().setHTML(`
                     <b>${place.name || 'Без названия'}</b><br>
                     ${place.type ? `<small>${place.type}</small><br>` : ''}
+                    ${place.distance ? `<small>Расстояние: ${place.distance} м</small><br>` : ''}
                     ${place.revew || ''}
                 `))
                 .addTo(this.map);
@@ -245,13 +318,6 @@ class FoodFinder {
         console.error("Ошибка:", message);
     }
 
-    refreshMap() {
-        if (this.map) {
-            this.map.resize();
-            alert("Карта обновлена");
-        }
-    }
-
     clearPlaceMarkers() {
         if (this.placeMarkers && this.placeMarkers.length > 0) {
             this.placeMarkers.forEach(marker => {
@@ -262,6 +328,48 @@ class FoodFinder {
             this.placeMarkers = [];
             this.highlightedMarker = null;
         }
+    }
+
+    displayLuckyPlace(place) {
+        const resultsDiv = document.getElementById('results');
+        
+        // Очищаем все маркеры
+        this.clearPlaceMarkers();
+        
+        // Добавляем только один маркер для выбранного места
+        if (place.location && place.location.coordinates) {
+            const marker = new mapboxgl.Marker()
+                .setLngLat([place.location.coordinates[0], place.location.coordinates[1]])
+                .setPopup(new mapboxgl.Popup().setHTML(`
+                    <b>${place.name || 'Без названия'}</b><br>
+                    ${place.type ? `<small>${place.type}</small><br>` : ''}
+                    ${place.distance ? `<small>Расстояние: ${place.distance} м</small><br>` : ''}
+                    ${place.revew ? `<div>${place.revew}</div>` : ''}
+                `))
+                .addTo(this.map);
+            
+            // Перемещаем карту к выбранному месту
+            this.map.flyTo({
+                center: [place.location.coordinates[0], place.location.coordinates[1]],
+                zoom: 15
+            });
+            
+            // Открываем попап
+            marker.togglePopup();
+        }
+
+        // Отображаем информацию о месте
+        let html = "<h3>Вам повезло! 🍀</h3>";
+        html += `
+            <div class="place lucky-place">
+                <strong>${place.name || 'Без названия'}</strong>
+                ${place.type ? `<span class="place-type">${place.type}</span>` : ''}
+                ${place.distance ? `<div class="distance">${place.distance} м</div>` : ''}
+                ${place.revew ? `<div>${place.revew}</div>` : ''}
+            </div>
+        `;
+
+        resultsDiv.innerHTML = html;
     }
 }
 
