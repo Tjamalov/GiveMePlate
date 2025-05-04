@@ -33,6 +33,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const randomIndex = Math.floor(Math.random() * places.length);
             const luckyPlace = places[randomIndex];
             displayPlace(luckyPlace);
+
+            // Очищаем флаг isLucky после использования
+            sessionStorage.removeItem('isLucky');
+            sessionStorage.removeItem('userLocation');
         } else {
             // Обычный режим - показываем выбранное место
             const places = JSON.parse(sessionStorage.getItem('places') || '[]');

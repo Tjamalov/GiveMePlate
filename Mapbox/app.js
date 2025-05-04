@@ -194,10 +194,15 @@ class FoodFinder {
         let html = "<h3>Найденные места:</h3>";
         html += visiblePlaces.map((place, index) => `
             <div class="place" data-index="${index}">
-                <strong>${place.name || 'Без названия'}</strong>
-                ${place.type ? `<span class="place-type">${place.type}</span>` : ''}
-                ${place.distance ? `<div class="distance">${place.distance} м</div>` : ''}
-                ${place.revew ? `<div>${place.revew}</div>` : ''}
+                <div class="place-content">
+                    <strong>${place.name || 'Без названия'}</strong>
+                    ${place.type ? `<span class="place-type">${place.type}</span>` : ''}
+                    ${place.distance ? `<div class="distance">${place.distance} м</div>` : ''}
+                    ${place.revew ? `<div>${place.revew}</div>` : ''}
+                </div>
+                <button class="map-btn" data-index="${index}">
+                    <span class="material-icons">map</span>
+                </button>
             </div>
         `).join('');
 
@@ -230,10 +235,15 @@ class FoodFinder {
         let html = "<h3>Найденные места:</h3>";
         html += this.allPlaces.map((place, index) => `
             <div class="place" data-index="${index}">
-                <strong>${place.name || 'Без названия'}</strong>
-                ${place.type ? `<span class="place-type">${place.type}</span>` : ''}
-                ${place.distance ? `<div class="distance">${place.distance} м</div>` : ''}
-                ${place.revew ? `<div>${place.revew}</div>` : ''}
+                <div class="place-content">
+                    <strong>${place.name || 'Без названия'}</strong>
+                    ${place.type ? `<span class="place-type">${place.type}</span>` : ''}
+                    ${place.distance ? `<div class="distance">${place.distance} м</div>` : ''}
+                    ${place.revew ? `<div>${place.revew}</div>` : ''}
+                </div>
+                <button class="map-btn" data-index="${index}">
+                    <span class="material-icons">map</span>
+                </button>
             </div>
         `).join('');
 
@@ -271,8 +281,26 @@ class FoodFinder {
 
     addPlaceClickHandlers() {
         document.querySelectorAll('.place').forEach(placeEl => {
-            placeEl.addEventListener('click', () => {
+            // Обработчик клика по карточке - переход в детали
+            placeEl.addEventListener('click', (e) => {
+                // Если клик был по кнопке с картой, не переходим в детали
+                if (e.target.closest('.map-btn')) {
+                    return;
+                }
+                
                 const index = parseInt(placeEl.getAttribute('data-index'));
+                const place = this.allPlaces[index];
+                if (place) {
+                    window.location.href = `Mapbox/placeDetails.html?id=${place.id}`;
+                }
+            });
+        });
+
+        // Обработчик клика по кнопке с картой
+        document.querySelectorAll('.map-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation(); // Предотвращаем всплытие события до карточки
+                const index = parseInt(btn.getAttribute('data-index'));
                 const marker = this.placeMarkers.find(m => m.placeIndex === index);
                 
                 if (marker) {
