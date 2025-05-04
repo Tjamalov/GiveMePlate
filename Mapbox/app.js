@@ -176,6 +176,9 @@ class FoodFinder {
             return a.distance - b.distance;
         });
 
+        // Кэшируем места в sessionStorage
+        sessionStorage.setItem('places', JSON.stringify(this.allPlaces));
+
         console.log('Processed places with distances:', this.allPlaces);
     }
 
@@ -274,7 +277,8 @@ class FoodFinder {
                     <b>${place.name || 'Без названия'}</b><br>
                     ${place.type ? `<small>${place.type}</small><br>` : ''}
                     ${place.distance ? `<small>Расстояние: ${place.distance} м</small><br>` : ''}
-                    ${place.revew || ''}
+                    ${place.revew ? `<div>${place.revew}</div>` : ''}
+                    <a href="placeDetails.html?id=${place.id}" class="details-btn">Подробнее</a>
                 `))
                 .addTo(this.map);
             

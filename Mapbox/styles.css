@@ -134,7 +134,7 @@ button:hover {
 .mapboxgl-popup-content {
     background: rgba(0, 0, 0, 0.9) !important;
     color: white !important;
-    padding: 8px !important;
+    padding: 12px !important;
     border-radius: 8px !important;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
     font-family: 'Manrope', sans-serif !important;
@@ -148,19 +148,19 @@ button:hover {
 
 .mapboxgl-popup-content b {
     font-size: 1.1em !important;
-    margin-bottom: 1px !important;
+    margin-bottom: 4px !important;
     display: block !important;
 }
 
 .mapboxgl-popup-content small {
     opacity: 0.8 !important;
     display: block !important;
-    margin: 1px 0 !important;
+    margin: 4px 0 !important;
     line-height: 1.2 !important;
 }
 
 .mapboxgl-popup-content div {
-    margin-top: 2px !important;
+    margin-top: 4px !important;
     line-height: 1.2 !important;
 }
 
@@ -235,4 +235,59 @@ button:hover {
 .show-all-btn:hover {
     background: rgba(255, 255, 255, 0.15);
     border-color: rgba(255, 255, 255, 0.3);
+}
+
+.place-details-container {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    border-radius: 16px;
+    position: relative;
+}
+
+.close-details-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 8px 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+
+.close-details-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.close-details-btn .material-icons {
+    font-size: 20px;
+}
+
+.details-btn {
+    display: block;
+    margin-top: 12px;
+    padding: 8px 16px;
+    background: #1a73e8;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    text-align: center;
+    font-weight: 500;
+}
+
+.details-btn:hover {
+    background: #1557b0;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 } 
