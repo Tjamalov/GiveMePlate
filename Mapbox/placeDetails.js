@@ -1,36 +1,74 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const closeBtn = document.getElementById('closeDetailsBtn');
-    const placeDetails = document.getElementById('placeDetails');
-    
-    // Получаем ID места из URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const placeId = urlParams.get('id');
-    
-    // Получаем кэшированные данные из sessionStorage
-    const cachedPlaces = JSON.parse(sessionStorage.getItem('places')) || [];
-    const place = cachedPlaces.find(p => p.id === placeId);
-    
-    if (place) {
-        displayPlaceDetails(place);
-    } else {
-        placeDetails.innerHTML = '<div class="error">Место не найдено</div>';
-    }
-    
+document.addEventListener('DOMContentLoaded', async () => {
+    const content = document.getElementById('content');
+    const closeBtn = document.getElementById('closeBtn');
+
+    // Обработчик закрытия
     closeBtn.addEventListener('click', () => {
-        // Вместо history.back() используем прямой переход на index.html
-        window.location.href = 'index.html';
+        window.location.href = '../index.html';
     });
+
+    try {
+        const isLucky = sessionStorage.getItem('isLucky') === 'true';
+
+        if (isLucky) {
+            // Если это режим "Мне повезёт", ищем места
+            const userLocation = JSON.parse(sessionStorage.getItem('userLocation'));
+            if (!userLocation) {
+                showError("Не удалось определить местоположение");
+                return;
+            }
+
+            // Создаем экземпляр базы данных
+            const db = new PlacesDatabase();
+            
+            // Ищем места в радиусе 3 км
+            const places = await db.searchPlaces(userLocation.latitude, userLocation.longitude, 3000);
+            
+            if (places.length === 0) {
+                showError("К сожалению, поблизости нет подходящих мест 😞");
+                return;
+            }
+
+            // Выбираем случайное место
+            const randomIndex = Math.floor(Math.random() * places.length);
+            const luckyPlace = places[randomIndex];
+            displayPlace(luckyPlace);
+        } else {
+            // Обычный режим - показываем выбранное место
+            const places = JSON.parse(sessionStorage.getItem('places') || '[]');
+            const placeId = new URLSearchParams(window.location.search).get('id');
+            const place = places.find(p => p.id === placeId);
+            
+            if (place) {
+                displayPlace(place);
+            } else {
+                showError("Место не найдено");
+            }
+        }
+    } catch (error) {
+        showError("Произошла ошибка при загрузке данных");
+        console.error(error);
+    }
 });
 
-function displayPlaceDetails(place) {
-    const placeDetails = document.getElementById('placeDetails');
-    let html = `
-        <h2>${place.name || 'Без названия'}</h2>
-        ${place.type ? `<div class="place-type">${place.type}</div>` : ''}
-        ${place.distance ? `<div class="distance">${place.distance} м</div>` : ''}
-        ${place.address ? `<div class="address">${place.address}</div>` : ''}
-        ${place.revew ? `<div class="description">${place.revew}</div>` : ''}
+function displayPlace(place) {
+    const content = document.getElementById('content');
+    content.innerHTML = `
+        <div class="place-details">
+            <h2>${place.name}</h2>
+            <div class="place-type">${place.type}</div>
+            <div class="place-distance">${Math.round(place.distance)} м</div>
+            <div class="place-address">${place.address || 'Адрес не указан'}</div>
+            ${place.revew ? `<div class="place-description">${place.revew}</div>` : ''}
+        </div>
     `;
-    
-    placeDetails.innerHTML = html;
+}
+
+function showError(message) {
+    const content = document.getElementById('content');
+    content.innerHTML = `
+        <div class="error">
+            ${message}
+        </div>
+    `;
 } 

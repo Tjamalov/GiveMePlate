@@ -200,24 +200,6 @@ button:hover {
     display: inline-block;
 }
 
-.lucky-place {
-    background-color: rgba(255, 255, 255, 0.15);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0% {
-        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
-    }
-    70% {
-        box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
-    }
-}
-
 .show-all-btn {
     display: block;
     width: 100%;
@@ -290,4 +272,61 @@ button:hover {
     background: #1557b0;
     transform: translateY(-1px);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Стили для страницы деталей */
+.place-details {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.place-details h2 {
+    margin-bottom: 15px;
+    font-size: 24px;
+}
+
+.place-type {
+    display: inline-block;
+    padding: 4px 8px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 4px;
+    font-size: 0.9em;
+    margin-bottom: 10px;
+}
+
+.place-distance {
+    color: #4CAF50;
+    margin-bottom: 10px;
+}
+
+.place-address {
+    margin-bottom: 15px;
+    color: rgba(255,255,255,0.8);
+}
+
+.place-description {
+    line-height: 1.6;
+    color: rgba(255,255,255,0.9);
+}
+
+.close-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.close-btn:hover {
+    background: rgba(0,0,0,0.9);
 } 
