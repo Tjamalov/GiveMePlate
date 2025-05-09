@@ -61,11 +61,32 @@ class FoodFinder {
             const position = await this.getCurrentPosition();
             const { latitude, longitude } = position.coords;
             
-            // Сохраняем координаты в sessionStorage
+            // Получаем все места
+            const places = await this.db.searchPlaces(latitude, longitude);
+            
+            // Фильтруем места в радиусе 5 км
+            const nearbyPlaces = places.filter(place => {
+                if (!place.location || !place.location.coordinates) return false;
+                const [placeLon, placeLat] = place.location.coordinates;
+                const distance = this.calculateDistance(latitude, longitude, placeLat, placeLon);
+                return distance <= 5000; // 5 км = 5000 метров
+            });
+
+            if (nearbyPlaces.length === 0) {
+                this.showError("К сожалению, поблизости нет подходящих мест 😞");
+                return;
+            }
+
+            // Выбираем случайное место из ближайших
+            const randomIndex = Math.floor(Math.random() * nearbyPlaces.length);
+            const luckyPlace = nearbyPlaces[randomIndex];
+            
+            // Сохраняем координаты и выбранное место
             sessionStorage.setItem('userLocation', JSON.stringify({ latitude, longitude }));
             sessionStorage.setItem('isLucky', 'true');
+            sessionStorage.setItem('luckyPlace', JSON.stringify(luckyPlace));
 
-            // Сразу переходим на страницу деталей
+            // Переходим на страницу деталей
             window.location.href = 'Mapbox/placeDetails.html';
         } catch (error) {
             this.showError(error.message);
@@ -187,7 +208,13 @@ class FoodFinder {
             return;
         }
 
-        // Показываем только первые 3 места
+        console.log('Displaying places:', this.allPlaces.map(p => ({ 
+            id: p.id, 
+            name: p.name,
+            distance: p.distance 
+        })));
+
+        // Показываем первые 3 места
         const visiblePlaces = this.allPlaces.slice(0, 3);
         const hasMorePlaces = this.allPlaces.length > 3;
 
@@ -252,6 +279,9 @@ class FoodFinder {
         // Добавляем маркеры для всех мест
         this.addPlaceMarkers(this.allPlaces);
         this.addPlaceClickHandlers();
+
+        // Прокручиваем к началу списка
+        resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     addPlaceMarkers(places = this.allPlaces) {

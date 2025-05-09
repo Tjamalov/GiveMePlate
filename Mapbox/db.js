@@ -34,35 +34,19 @@ class PlacesDatabase {
         try {
             console.log('Executing Supabase query...');
             
-            // Сначала проверим структуру таблицы
-            const { data: tableStructure, error: structureError } = await this.supabase
-                .from('places')
-                .select('*')
-                .limit(1);
-            
-            console.log('Table structure check:', {
-                hasData: !!tableStructure,
-                structureError,
-                firstRow: tableStructure?.[0]
-            });
-
-            if (structureError) {
-                console.error('Error checking table structure:', structureError);
-                throw structureError;
-            }
-
-            // Теперь получим данные
+            // Получаем данные
             const { data, error, count } = await this.supabase
                 .from('places')
                 .select('*', { count: 'exact' })
-                .limit(10);
+                .limit(50);
 
             console.log('Query result:', {
                 data,
                 error,
                 count,
                 hasData: !!data,
-                dataLength: data?.length
+                dataLength: data?.length,
+                allPlaces: data?.map(p => ({ id: p.id, name: p.name }))
             });
 
             if (error) {
@@ -72,61 +56,12 @@ class PlacesDatabase {
 
             if (!data || data.length === 0) {
                 console.warn('No data returned from places table');
-                // Добавим тестовые данные, если таблица пуста
-                await this.addTestData();
-                // Повторим запрос после добавления тестовых данных
-                const { data: newData } = await this.supabase
-                    .from('places')
-                    .select('*')
-                    .limit(10);
-                return newData || [];
+                return [];
             }
 
             return data;
         } catch (error) {
             console.error('Error in searchPlaces:', error);
-            throw error;
-        }
-    }
-
-    async addTestData() {
-        console.log('Adding test data...');
-        const testPlaces = [
-            {
-                name: 'Тестовое кафе',
-                type: 'cafe',
-                address: 'ул. Тестовая, 1',
-                location: {
-                    type: 'Point',
-                    coordinates: [20.485837, 54.953514]
-                }
-            },
-            {
-                name: 'Тестовый ресторан',
-                type: 'restaurant',
-                address: 'ул. Тестовая, 2',
-                location: {
-                    type: 'Point',
-                    coordinates: [20.486837, 54.954514]
-                }
-            }
-        ];
-
-        try {
-            const { data, error } = await this.supabase
-                .from('places')
-                .insert(testPlaces)
-                .select();
-
-            if (error) {
-                console.error('Error adding test data:', error);
-                throw error;
-            }
-
-            console.log('Test data added successfully:', data);
-            return data;
-        } catch (error) {
-            console.error('Error in addTestData:', error);
             throw error;
         }
     }

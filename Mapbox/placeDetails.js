@@ -11,32 +11,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         const isLucky = sessionStorage.getItem('isLucky') === 'true';
 
         if (isLucky) {
-            // Если это режим "Мне повезёт", ищем места
-            const userLocation = JSON.parse(sessionStorage.getItem('userLocation'));
-            if (!userLocation) {
-                showError("Не удалось определить местоположение");
+            // Если это режим "Мне повезёт", используем сохраненное место
+            const luckyPlace = JSON.parse(sessionStorage.getItem('luckyPlace'));
+            if (!luckyPlace) {
+                showError("Не удалось найти подходящее место");
                 return;
             }
 
-            // Создаем экземпляр базы данных
-            const db = new PlacesDatabase();
-            
-            // Ищем места в радиусе 3 км
-            const places = await db.searchPlaces(userLocation.latitude, userLocation.longitude, 3000);
-            
-            if (places.length === 0) {
-                showError("К сожалению, поблизости нет подходящих мест 😞");
-                return;
-            }
-
-            // Выбираем случайное место
-            const randomIndex = Math.floor(Math.random() * places.length);
-            const luckyPlace = places[randomIndex];
             displayPlace(luckyPlace);
 
-            // Очищаем флаг isLucky после использования
+            // Очищаем флаги после использования
             sessionStorage.removeItem('isLucky');
             sessionStorage.removeItem('userLocation');
+            sessionStorage.removeItem('luckyPlace');
         } else {
             // Обычный режим - показываем выбранное место
             const places = JSON.parse(sessionStorage.getItem('places') || '[]');
