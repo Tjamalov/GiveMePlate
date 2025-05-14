@@ -27,6 +27,44 @@ class PlacesDatabase {
         this.supabase = initializeSupabase();
     }
 
+    async getUniqueVibes() {
+        console.log('Fetching unique vibes...');
+        try {
+            const { data, error } = await this.supabase
+                .from('places')
+                .select('vibe')
+                .not('vibe', 'is', null)
+                .order('vibe');
+
+            if (error) throw error;
+
+            // Get unique vibes and filter out null/empty values
+            const uniqueVibes = [...new Set(data.map(place => place.vibe).filter(Boolean))];
+            console.log('Unique vibes:', uniqueVibes);
+            return uniqueVibes;
+        } catch (error) {
+            console.error('Error fetching unique vibes:', error);
+            throw error;
+        }
+    }
+
+    async searchPlacesByVibe(vibe) {
+        console.log('Searching places by vibe:', vibe);
+        try {
+            const { data, error } = await this.supabase
+                .from('places')
+                .select('*')
+                .eq('vibe', vibe)
+                .limit(50);
+
+            if (error) throw error;
+            return data || [];
+        } catch (error) {
+            console.error('Error searching places by vibe:', error);
+            throw error;
+        }
+    }
+
     async searchPlaces(latitude, longitude, radius = 1000) {
         console.log('Starting searchPlaces...');
         console.log('Input parameters:', { latitude, longitude, radius });

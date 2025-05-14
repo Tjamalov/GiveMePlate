@@ -6,6 +6,7 @@ class FoodFinder {
         this.placeMarkers = [];
         this.allPlaces = [];
         this.highlightedMarker = null;
+        this.selectedVibe = null;
         
         try {
             console.log('Creating PlacesDatabase instance...');
@@ -22,6 +23,7 @@ class FoodFinder {
     initializeEventListeners() {
         document.getElementById('findPlacesBtn').addEventListener('click', () => this.findPlaces());
         document.getElementById('luckyBtn').addEventListener('click', () => this.findLuckyPlace());
+        document.getElementById('findByVibeBtn').addEventListener('click', () => this.showVibeButtons());
     }
 
     async findPlaces() {
@@ -90,6 +92,71 @@ class FoodFinder {
             window.location.href = 'Mapbox/placeDetails.html';
         } catch (error) {
             this.showError(error.message);
+        }
+    }
+
+    async showVibeButtons() {
+        try {
+            const vibes = await this.db.getUniqueVibes();
+            const vibeButtonsContainer = document.getElementById('vibeButtons');
+            
+            if (vibes.length === 0) {
+                this.showError("Нет доступных вайбов");
+                return;
+            }
+
+            // Create buttons for each vibe
+            const buttons = vibes.map(vibe => `
+                <button class="vibe-button" data-vibe="${vibe}">
+                    ${vibe}
+                </button>
+            `).join('');
+
+            vibeButtonsContainer.innerHTML = buttons;
+            vibeButtonsContainer.style.display = 'flex';
+
+            // Add click handlers
+            document.querySelectorAll('.vibe-button').forEach(button => {
+                button.addEventListener('click', async () => {
+                    const vibe = button.dataset.vibe;
+                    this.selectedVibe = vibe;
+                    
+                    // Update active state
+                    document.querySelectorAll('.vibe-button').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    button.classList.add('active');
+
+                    // Get current position and search places
+                    try {
+                        const position = await this.getCurrentPosition();
+                        const { latitude, longitude } = position.coords;
+                        this.initializeOrUpdateMap(latitude, longitude);
+                        await this.searchPlacesByVibe(vibe, latitude, longitude);
+                        
+                        // Scroll to results
+                        document.getElementById('results').scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'start' 
+                        });
+                    } catch (error) {
+                        this.showError(error.message);
+                    }
+                });
+            });
+        } catch (error) {
+            this.showError("Ошибка при загрузке вайбов");
+            console.error(error);
+        }
+    }
+
+    async searchPlacesByVibe(vibe, latitude, longitude) {
+        try {
+            const places = await this.db.searchPlacesByVibe(vibe);
+            this.processPlaces(places, latitude, longitude);
+            this.displayResults();
+        } catch (error) {
+            this.showError("Ошибка при поиске мест по вайбу: " + error.message);
         }
     }
 
@@ -211,7 +278,8 @@ class FoodFinder {
         console.log('Displaying places:', this.allPlaces.map(p => ({ 
             id: p.id, 
             name: p.name,
-            distance: p.distance 
+            distance: p.distance,
+            vibe: p.vibe
         })));
 
         // Показываем первые 3 места
@@ -225,6 +293,7 @@ class FoodFinder {
                     <strong>${place.name || 'Без названия'}</strong>
                     ${place.type ? `<span class="place-type">${place.type}</span>` : ''}
                     ${place.distance ? `<div class="distance">${place.distance} м</div>` : ''}
+                    ${place.vibe ? `<div class="place-vibe">${place.vibe}</div>` : ''}
                     ${place.revew ? `<div>${place.revew}</div>` : ''}
                 </div>
                 <button class="map-btn" data-index="${index}">

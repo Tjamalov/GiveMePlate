@@ -27,14 +27,26 @@ h1 {
     font-size: 16px;
     border: none;
     border-radius: 8px;
-    background-color: #2c3e50;
     color: white;
     cursor: pointer;
     transition: background-color 0.3s;
 }
 
-.button-group button:hover {
+#findPlacesBtn, #findByVibeBtn {
+    background-color: #2c3e50;
+}
+
+#findPlacesBtn:hover, #findByVibeBtn:hover {
     background-color: #34495e;
+}
+
+#luckyBtn {
+    background-color: #1a1a1a;
+    margin-top: 30px;
+}
+
+#luckyBtn:hover {
+    background-color: #2a2a2a;
 }
 
 #map-container {
@@ -89,6 +101,16 @@ h1 {
     font-size: 0.8em;
     margin-left: 8px;
     color: #fff;
+}
+
+.place-vibe {
+    display: inline-block;
+    padding: 3px 8px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    font-size: 0.9em;
+    margin-top: 5px;
+    color: rgba(255, 255, 255, 0.7);
 }
 
 .loading {
@@ -370,4 +392,59 @@ h1 {
 
 .map-btn .material-icons {
     font-size: 24px;
+}
+
+.vibe-buttons {
+    display: none;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin: 20px auto;
+    max-width: 800px;
+}
+
+.vibe-button {
+    padding: 8px 16px;
+    background: #1a1a1a;
+    color: white;
+    border: 1px solid #333;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Manrope', sans-serif;
+    font-size: 14px;
+}
+
+.vibe-button:hover {
+    background: #2a2a2a;
+    border-color: #444;
+}
+
+.vibe-button.active {
+    background: #1a1a1a;
+    border-color: #1a73e8;
+}
+
+.place-photo {
+    margin: 20px 0;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.place-photo img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: cover;
+}
+
+.place-details .place-vibe {
+    display: inline-block;
+    padding: 3px 8px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    font-size: 0.9em;
+    margin: 10px 0;
+    color: rgba(255, 255, 255, 0.7);
 } 
