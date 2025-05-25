@@ -11,21 +11,41 @@ document.addEventListener('DOMContentLoaded', async () => {
         const isLucky = sessionStorage.getItem('isLucky') === 'true';
 
         if (isLucky) {
-            // Если это режим "Мне повезёт", используем сохраненное место
-            const luckyPlace = JSON.parse(sessionStorage.getItem('luckyPlace'));
-            console.log('Lucky place data:', luckyPlace);
-            
-            if (!luckyPlace) {
-                showError("Не удалось найти подходящее место");
+            // Если это режим "Мне повезёт", ищем ближайшее место
+            const userLocation = JSON.parse(sessionStorage.getItem('userLocation'));
+            if (!userLocation) {
+                showError("Не удалось получить ваше местоположение");
                 return;
             }
 
+            // Инициализируем базу данных
+            const db = new PlacesDatabase();
+            
+            // Получаем все места
+            const places = await db.searchPlaces(userLocation.latitude, userLocation.longitude);
+            
+            // Фильтруем места в радиусе 5 км
+            const nearbyPlaces = places.filter(place => {
+                if (!place.location || !place.location.coordinates) return false;
+                const [placeLon, placeLat] = place.location.coordinates;
+                const distance = calculateDistance(userLocation.latitude, userLocation.longitude, placeLat, placeLon);
+                return distance <= 5000; // 5 км = 5000 метров
+            });
+
+            if (nearbyPlaces.length === 0) {
+                showError("К сожалению, поблизости нет подходящих мест 😞");
+                return;
+            }
+
+            // Выбираем случайное место из ближайших
+            const randomIndex = Math.floor(Math.random() * nearbyPlaces.length);
+            const luckyPlace = nearbyPlaces[randomIndex];
+            
             displayPlace(luckyPlace);
 
             // Очищаем флаги после использования
             sessionStorage.removeItem('isLucky');
             sessionStorage.removeItem('userLocation');
-            sessionStorage.removeItem('luckyPlace');
         } else {
             // Обычный режим - показываем выбранное место
             const places = JSON.parse(sessionStorage.getItem('places') || '[]');
@@ -47,6 +67,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Error in placeDetails:', error);
     }
 });
+
+// Функция для расчета расстояния между двумя точками
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; // Earth's radius in meters
+    const φ1 = lat1 * Math.PI/180;
+    const φ2 = lat2 * Math.PI/180;
+    const Δφ = (lat2-lat1) * Math.PI/180;
+    const Δλ = (lon2-lon1) * Math.PI/180;
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return Math.round(R * c); // Distance in meters
+}
 
 function displayPlace(place) {
     console.log('Displaying place:', place);

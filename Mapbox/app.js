@@ -63,30 +63,9 @@ class FoodFinder {
             const position = await this.getCurrentPosition();
             const { latitude, longitude } = position.coords;
             
-            // Получаем все места
-            const places = await this.db.searchPlaces(latitude, longitude);
-            
-            // Фильтруем места в радиусе 5 км
-            const nearbyPlaces = places.filter(place => {
-                if (!place.location || !place.location.coordinates) return false;
-                const [placeLon, placeLat] = place.location.coordinates;
-                const distance = this.calculateDistance(latitude, longitude, placeLat, placeLon);
-                return distance <= 5000; // 5 км = 5000 метров
-            });
-
-            if (nearbyPlaces.length === 0) {
-                this.showError("К сожалению, поблизости нет подходящих мест 😞");
-                return;
-            }
-
-            // Выбираем случайное место из ближайших
-            const randomIndex = Math.floor(Math.random() * nearbyPlaces.length);
-            const luckyPlace = nearbyPlaces[randomIndex];
-            
-            // Сохраняем координаты и выбранное место
+            // Сохраняем координаты и флаг
             sessionStorage.setItem('userLocation', JSON.stringify({ latitude, longitude }));
             sessionStorage.setItem('isLucky', 'true');
-            sessionStorage.setItem('luckyPlace', JSON.stringify(luckyPlace));
 
             // Переходим на страницу деталей
             window.location.href = 'Mapbox/placeDetails.html';
@@ -126,6 +105,9 @@ class FoodFinder {
                         btn.classList.remove('active');
                     });
                     button.classList.add('active');
+
+                    // Show loading state
+                    this.showLoading();
 
                     // Get current position and search places
                     try {
