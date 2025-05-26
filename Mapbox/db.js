@@ -48,47 +48,113 @@ class PlacesDatabase {
         }
     }
 
-    async searchPlacesByVibe(vibe, latitude, longitude, radius = 1000) {
+    async searchPlacesByVibe(vibe, latitude, longitude, radius = 1000, limit = 1000) {
         console.log('Searching places by vibe:', vibe);
+        // Используем больший радиус для поиска в базе
+        const dbRadius = 30000; // 30 км
+        console.log('Using PostGIS with parameters:', {
+            vibe,
+            latitude,
+            longitude,
+            radius,
+            dbRadius,
+            limit,
+            point: `POINT(${longitude} ${latitude})`,
+            distance: `${radius} meters (client) / ${dbRadius} meters (db)`
+        });
+        
         try {
             const { data, error } = await this.supabase
-                .from('places')
-                .select('*')
-                .eq('vibe', vibe)
-                .filter('location', 'dwithin', `POINT(${longitude} ${latitude})`, radius)
-                .order('location <->', `POINT(${longitude} ${latitude})`)
-                .limit(50);
+                .rpc('search_places_by_vibe', {
+                    p_vibe: vibe,
+                    p_lat: latitude,
+                    p_lon: longitude,
+                    p_radius: dbRadius,
+                    p_limit: limit
+                });
 
             if (error) throw error;
-            return data || [];
+            
+            // Фильтруем результаты на клиенте
+            const filteredData = data.map(place => ({
+                ...place,
+                distance: this.calculateDistance(
+                    latitude,
+                    longitude,
+                    place.location.coordinates[1],
+                    place.location.coordinates[0]
+                )
+            }));
+
+            console.log('PostGIS search results:', {
+                totalPlaces: filteredData?.length,
+                nearbyPlaces: filteredData?.filter(p => p.distance <= radius).length,
+                farPlaces: filteredData?.filter(p => p.distance > radius).length,
+                places: filteredData?.map(p => ({
+                    name: p.name,
+                    distance: p.distance,
+                    coordinates: p.location?.coordinates,
+                    location: p.location,
+                    geometry: p.location?.type,
+                    srid: p.location?.srid
+                }))
+            });
+            
+            return filteredData || [];
         } catch (error) {
             console.error('Error searching places by vibe:', error);
             throw error;
         }
     }
 
-    async searchPlaces(latitude, longitude, radius = 1000) {
+    async searchPlaces(latitude, longitude, radius = 1000, limit = 1000) {
         console.log('Starting searchPlaces...');
-        console.log('Input parameters:', { latitude, longitude, radius });
+        // Используем больший радиус для поиска в базе
+        const dbRadius = 30000; // 30 км
+        console.log('Using PostGIS with parameters:', {
+            latitude,
+            longitude,
+            radius,
+            dbRadius,
+            limit,
+            point: `POINT(${longitude} ${latitude})`,
+            distance: `${radius} meters (client) / ${dbRadius} meters (db)`
+        });
         
         try {
             console.log('Executing Supabase query with PostGIS...');
             
-            // Используем PostGIS для поиска мест в радиусе
             const { data, error, count } = await this.supabase
-                .from('places')
-                .select('*', { count: 'exact' })
-                .filter('location', 'dwithin', `POINT(${longitude} ${latitude})`, radius)
-                .order('location <->', `POINT(${longitude} ${latitude})`)
-                .limit(50);
+                .rpc('search_places', {
+                    p_lat: latitude,
+                    p_lon: longitude,
+                    p_radius: dbRadius,
+                    p_limit: limit
+                });
 
-            console.log('Query result:', {
-                data,
-                error,
-                count,
-                hasData: !!data,
-                dataLength: data?.length,
-                allPlaces: data?.map(p => ({ id: p.id, name: p.name }))
+            // Фильтруем результаты на клиенте
+            const filteredData = data.map(place => ({
+                ...place,
+                distance: this.calculateDistance(
+                    latitude,
+                    longitude,
+                    place.location.coordinates[1],
+                    place.location.coordinates[0]
+                )
+            }));
+
+            console.log('PostGIS search results:', {
+                totalPlaces: filteredData?.length,
+                nearbyPlaces: filteredData?.filter(p => p.distance <= radius).length,
+                farPlaces: filteredData?.filter(p => p.distance > radius).length,
+                places: filteredData?.map(p => ({
+                    name: p.name,
+                    distance: p.distance,
+                    coordinates: p.location?.coordinates,
+                    location: p.location,
+                    geometry: p.location?.type,
+                    srid: p.location?.srid
+                }))
             });
 
             if (error) {
@@ -96,16 +162,39 @@ class PlacesDatabase {
                 throw error;
             }
 
-            if (!data || data.length === 0) {
+            if (!filteredData || filteredData.length === 0) {
                 console.warn('No data returned from places table');
                 return [];
             }
 
-            return data;
+            const distances = filteredData.map(p => p.distance);
+            console.log('Distances calculated by PostGIS:', {
+                min: Math.min(...distances),
+                max: Math.max(...distances),
+                avg: distances.reduce((a, b) => a + b, 0) / distances.length
+            });
+
+            return filteredData;
         } catch (error) {
             console.error('Error in searchPlaces:', error);
             throw error;
         }
+    }
+
+    // Вспомогательная функция для расчета расстояния
+    calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371e3; // Earth's radius in meters
+        const φ1 = lat1 * Math.PI/180;
+        const φ2 = lat2 * Math.PI/180;
+        const Δφ = (lat2-lat1) * Math.PI/180;
+        const Δλ = (lon2-lon1) * Math.PI/180;
+
+        const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ/2) * Math.sin(Δλ/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+        return Math.round(R * c); // Distance in meters
     }
 
     async getPlaceDetails(placeId) {
