@@ -94,7 +94,7 @@ class FoodFinder {
             sessionStorage.setItem('userLocation', JSON.stringify({ latitude, longitude }));
             sessionStorage.setItem('isLucky', 'true');
 
-            // Переходим на страницу деталей
+            // Сразу переходим на страницу деталей
             window.location.href = 'Mapbox/placeDetails.html';
         } catch (error) {
             this.showError(error.message);

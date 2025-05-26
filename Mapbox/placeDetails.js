@@ -111,6 +111,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
+            // Сразу инициализируем карту
+            try {
+                initializeMap(userLocation.latitude, userLocation.longitude);
+            } catch (error) {
+                console.error('Error initializing map:', error);
+                showError("Ошибка при инициализации карты: " + error.message);
+            }
+
             // Инициализируем базу данных
             const db = new PlacesDatabase();
             
@@ -139,15 +147,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log('Selected lucky place:', luckyPlace);
             
             displayPlace(luckyPlace);
-
-            // Инициализируем карту и добавляем маркеры
-            try {
-                initializeMap(userLocation.latitude, userLocation.longitude);
-                addMarkers(luckyPlace, userLocation.latitude, userLocation.longitude);
-            } catch (error) {
-                console.error('Error initializing map:', error);
-                showError("Ошибка при инициализации карты: " + error.message);
-            }
+            addMarkers(luckyPlace, userLocation.latitude, userLocation.longitude);
 
             // Очищаем флаги после использования
             sessionStorage.removeItem('isLucky');
