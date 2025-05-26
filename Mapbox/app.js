@@ -173,7 +173,7 @@ class FoodFinder {
 
     async searchPlacesByVibe(vibe, latitude, longitude) {
         try {
-            const places = await this.db.searchPlacesByVibe(vibe);
+            const places = await this.db.searchPlacesByVibe(vibe, latitude, longitude);
             console.log('Все места с вайбом:', places);
             
             // Разделяем места на ближние (до 1км) и дальние (больше 1км)
@@ -181,10 +181,9 @@ class FoodFinder {
             const farPlaces = [];
             
             places.forEach(place => {
-                if (!place.location || !place.location.coordinates) return;
+                if (!place.location) return;
                 
-                const [placeLon, placeLat] = place.location.coordinates;
-                const distance = this.calculateDistance(latitude, longitude, placeLat, placeLon);
+                const distance = this.calculateDistance(latitude, longitude, place.location.coordinates[1], place.location.coordinates[0]);
                 console.log('Место:', place.name, 'Расстояние:', distance);
                 
                 if (distance <= 1000) { // до 1км

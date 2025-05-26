@@ -48,13 +48,15 @@ class PlacesDatabase {
         }
     }
 
-    async searchPlacesByVibe(vibe) {
+    async searchPlacesByVibe(vibe, latitude, longitude, radius = 1000) {
         console.log('Searching places by vibe:', vibe);
         try {
             const { data, error } = await this.supabase
                 .from('places')
                 .select('*')
                 .eq('vibe', vibe)
+                .filter('location', 'dwithin', `POINT(${longitude} ${latitude})`, radius)
+                .order('location <->', `POINT(${longitude} ${latitude})`)
                 .limit(50);
 
             if (error) throw error;
@@ -70,12 +72,14 @@ class PlacesDatabase {
         console.log('Input parameters:', { latitude, longitude, radius });
         
         try {
-            console.log('Executing Supabase query...');
+            console.log('Executing Supabase query with PostGIS...');
             
-            // Получаем данные
+            // Используем PostGIS для поиска мест в радиусе
             const { data, error, count } = await this.supabase
                 .from('places')
                 .select('*', { count: 'exact' })
+                .filter('location', 'dwithin', `POINT(${longitude} ${latitude})`, radius)
+                .order('location <->', `POINT(${longitude} ${latitude})`)
                 .limit(50);
 
             console.log('Query result:', {
