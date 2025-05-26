@@ -8,6 +8,20 @@ class FoodFinder {
         this.highlightedMarker = null;
         this.selectedVibe = null;
         
+        // Маппинг вайбов на эмоджи
+        this.vibeEmojis = {
+            'тусовый': '🎉',
+            'семейный': '👨‍👩‍👧‍👦',
+            'хипстерский': '📸',
+            'локальный': '☂️',
+            'домашний': '🧶',
+            'романтичный': '💘',
+            'панк': '🎸',
+            'студенческий': '🥤',
+            'лакшери': '💰',
+            'туристический': '🎒'
+        };
+        
         try {
             console.log('Creating PlacesDatabase instance...');
             this.db = new PlacesDatabase();
@@ -84,15 +98,22 @@ class FoodFinder {
                 return;
             }
 
-            // Create buttons for each vibe
-            const buttons = vibes.map(vibe => `
-                <button class="vibe-button" data-vibe="${vibe}">
-                    ${vibe}
-                </button>
-            `).join('');
+            // Create buttons for each vibe with emojis only
+            const buttons = vibes.map(vibe => {
+                const emoji = this.vibeEmojis[vibe.toLowerCase()] || vibe;
+                return `
+                    <button class="vibe-button" data-vibe="${vibe}" title="${vibe}">
+                        ${emoji}
+                    </button>
+                `;
+            }).join('');
 
             vibeButtonsContainer.innerHTML = buttons;
-            vibeButtonsContainer.style.display = 'flex';
+            vibeButtonsContainer.style.display = 'grid';
+            vibeButtonsContainer.style.gap = '10px';
+            vibeButtonsContainer.style.justifyContent = 'center';
+            vibeButtonsContainer.style.maxWidth = '800px';
+            vibeButtonsContainer.style.margin = '20px auto';
 
             // Add click handlers
             document.querySelectorAll('.vibe-button').forEach(button => {
@@ -181,7 +202,11 @@ class FoodFinder {
             return;
         }
 
-        let html = "<h3>Найденные места:</h3>";
+        // Формируем заголовок с учетом выбранного вайба
+        const vibeText = this.selectedVibe ? 
+            `${this.selectedVibe} места` : 
+            'места';
+        let html = `<h3>Найденные ${vibeText} в радиусе 1км:</h3>`;
         
         // Показываем только первые 3 ближних места
         const visibleNearbyPlaces = nearbyPlaces.slice(0, 3);
@@ -502,26 +527,134 @@ class FoodFinder {
     showAllPlaces() {
         const resultsDiv = document.getElementById('results');
         
-        let html = "<h3>Найденные места:</h3>";
-        html += this.allPlaces.map((place, index) => `
-            <div class="place" data-index="${index}">
-                <div class="place-content">
-                    <strong>${place.name || 'Без названия'}</strong>
-                    ${place.type ? `<span class="place-type">${place.type}</span>` : ''}
-                    ${place.distance ? `<div class="distance">${place.distance} м</div>` : ''}
-                    ${place.revew ? `<div>${place.revew}</div>` : ''}
+        // Разделяем места на ближние (до 1км) и дальние (больше 1км)
+        const nearbyPlaces = [];
+        const farPlaces = [];
+        
+        this.allPlaces.forEach(place => {
+            if (!place.location || !place.location.coordinates) return;
+            
+            const [placeLon, placeLat] = place.location.coordinates;
+            const distance = this.calculateDistance(
+                this.userMarker.getLngLat().lat,
+                this.userMarker.getLngLat().lng,
+                placeLat,
+                placeLon
+            );
+            
+            if (distance <= 1000) { // до 1км
+                nearbyPlaces.push({ ...place, distance });
+            } else { // больше 1км
+                farPlaces.push({ ...place, distance });
+            }
+        });
+
+        // Формируем заголовок с учетом выбранного вайба
+        const vibeText = this.selectedVibe ? 
+            `${this.selectedVibe} места` : 
+            'места';
+        let html = `<h3>Найденные ${vibeText} в радиусе 1км:</h3>`;
+        
+        // Показываем все ближние места
+        if (nearbyPlaces.length > 0) {
+            html += nearbyPlaces.map((place, index) => `
+                <div class="place" data-index="${this.allPlaces.indexOf(place)}">
+                    <div class="place-content">
+                        <strong>${place.name || 'Без названия'}</strong>
+                        ${place.type ? `<span class="place-type">${place.type}</span>` : ''}
+                        ${place.distance ? `<div class="distance">${place.distance} м</div>` : ''}
+                        ${place.vibe ? `<div class="place-vibe">${place.vibe}</div>` : ''}
+                        ${place.revew ? `<div>${place.revew}</div>` : ''}
+                    </div>
+                    <button class="map-btn" data-index="${this.allPlaces.indexOf(place)}">
+                        <span class="material-icons">map</span>
+                    </button>
                 </div>
-                <button class="map-btn" data-index="${index}">
-                    <span class="material-icons">map</span>
+            `).join('');
+
+            // Если есть дальние места, добавляем кнопку "А что есть дальше?"
+            if (farPlaces.length > 0) {
+                html += `
+                    <button id="showFarPlacesBtn" class="show-all-btn">
+                        А что есть дальше? (${farPlaces.length})
+                    </button>
+                    <div id="farPlaces" style="display: none;">
+                        ${farPlaces.map((place, index) => `
+                            <div class="place" data-index="${this.allPlaces.indexOf(place)}">
+                                <div class="place-content">
+                                    <strong>${place.name || 'Без названия'}</strong>
+                                    ${place.type ? `<span class="place-type">${place.type}</span>` : ''}
+                                    ${place.distance ? `<div class="distance">${place.distance} м</div>` : ''}
+                                    ${place.vibe ? `<div class="place-vibe">${place.vibe}</div>` : ''}
+                                    ${place.revew ? `<div>${place.revew}</div>` : ''}
+                                </div>
+                                <button class="map-btn" data-index="${this.allPlaces.indexOf(place)}">
+                                    <span class="material-icons">map</span>
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+        } else if (farPlaces.length > 0) {
+            // Если нет ближних мест, но есть дальние, показываем кнопку "А что есть дальше?"
+            html += `
+                <div class="no-nearby-places">
+                    Интересных мест поблизости нет
+                </div>
+                <button id="showFarPlacesBtn" class="show-all-btn">
+                    А что есть дальше? (${farPlaces.length})
                 </button>
-            </div>
-        `).join('');
+                <div id="farPlaces" style="display: none;">
+                    ${farPlaces.map((place, index) => `
+                        <div class="place" data-index="${this.allPlaces.indexOf(place)}">
+                            <div class="place-content">
+                                <strong>${place.name || 'Без названия'}</strong>
+                                ${place.type ? `<span class="place-type">${place.type}</span>` : ''}
+                                ${place.distance ? `<div class="distance">${place.distance} м</div>` : ''}
+                                ${place.vibe ? `<div class="place-vibe">${place.vibe}</div>` : ''}
+                                ${place.revew ? `<div>${place.revew}</div>` : ''}
+                            </div>
+                            <button class="map-btn" data-index="${this.allPlaces.indexOf(place)}">
+                                <span class="material-icons">map</span>
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
 
         resultsDiv.innerHTML = html;
         
-        // Добавляем маркеры для всех мест
-        this.addPlaceMarkers(this.allPlaces);
+        // Добавляем маркеры для всех ближних мест
+        if (nearbyPlaces.length > 0) {
+            this.addPlaceMarkers(nearbyPlaces);
+        }
         this.addPlaceClickHandlers();
+
+        // Добавляем обработчик для кнопки "А что есть дальше?"
+        if (farPlaces.length > 0) {
+            const showFarPlacesBtn = document.getElementById('showFarPlacesBtn');
+            const farPlacesDiv = document.getElementById('farPlaces');
+            
+            showFarPlacesBtn.addEventListener('click', () => {
+                if (farPlacesDiv.style.display === 'none') {
+                    farPlacesDiv.style.display = 'block';
+                    showFarPlacesBtn.textContent = 'Скрыть дальние места';
+                    // Добавляем маркеры для дальних мест
+                    this.addPlaceMarkers(farPlaces);
+                } else {
+                    farPlacesDiv.style.display = 'none';
+                    showFarPlacesBtn.textContent = `А что есть дальше? (${farPlaces.length})`;
+                    // Удаляем маркеры дальних мест
+                    this.clearPlaceMarkers();
+                    // Возвращаем маркеры для ближних мест
+                    if (nearbyPlaces.length > 0) {
+                        this.addPlaceMarkers(nearbyPlaces);
+                    }
+                }
+            });
+        }
 
         // Прокручиваем к началу списка
         resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });

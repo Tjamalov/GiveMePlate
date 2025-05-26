@@ -420,33 +420,47 @@ h1 {
 
 .vibe-buttons {
     display: none;
-    flex-wrap: wrap;
-    gap: 10px;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
     margin: 20px auto;
     max-width: 800px;
+    padding: 0 20px;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
 }
 
 .vibe-button {
-    padding: 8px 16px;
+    padding: 12px;
     background: #1a1a1a;
     color: white;
     border: 1px solid #333;
-    border-radius: 8px;
+    border-radius: 12px;
     cursor: pointer;
     transition: all 0.2s;
     font-family: 'Manrope', sans-serif;
-    font-size: 14px;
+    font-size: 24px;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .vibe-button:hover {
     background: #2a2a2a;
     border-color: #444;
+    transform: translateY(-2px);
 }
 
 .vibe-button.active {
     background: #1a1a1a;
     border-color: #1a73e8;
+    box-shadow: 0 0 10px rgba(26, 115, 232, 0.3);
+}
+
+.vibe-button span {
+    font-size: 1.2em;
 }
 
 .place-photo {
