@@ -5,7 +5,6 @@ class FoodFinder {
         this.userMarker = null;
         this.placeMarkers = [];
         this.allPlaces = [];
-        this.highlightedMarker = null;
         this.selectedVibe = null;
         
         // Маппинг вайбов на эмоджи
@@ -35,8 +34,14 @@ class FoodFinder {
     }
 
     initializeEventListeners() {
-        document.getElementById('findPlacesBtn').addEventListener('click', () => this.findPlaces());
-        document.getElementById('luckyBtn').addEventListener('click', () => this.findLuckyPlace());
+        document.getElementById('findPlacesBtn').addEventListener('click', () => {
+            this.findPlaces();
+        });
+        
+        document.getElementById('luckyBtn').addEventListener('click', () => {
+            this.findLuckyPlace();
+        });
+        
         document.getElementById('findByVibeBtn').addEventListener('click', () => this.showVibeButtons());
     }
 
@@ -46,6 +51,14 @@ class FoodFinder {
             console.error('Geolocation not supported');
             this.showError("Геолокация не поддерживается вашим браузером");
             return;
+        }
+
+        // Скрываем вайбы если они открыты
+        const vibeButtonsContainer = document.getElementById('vibeButtons');
+        const findByVibeBtn = document.getElementById('findByVibeBtn');
+        if (vibeButtonsContainer.style.display === 'grid') {
+            vibeButtonsContainer.style.display = 'none';
+            findByVibeBtn.textContent = 'По вайбу';
         }
 
         this.showLoading();
@@ -92,9 +105,17 @@ class FoodFinder {
         try {
             const vibes = await this.db.getUniqueVibes();
             const vibeButtonsContainer = document.getElementById('vibeButtons');
+            const findByVibeBtn = document.getElementById('findByVibeBtn');
             
             if (vibes.length === 0) {
                 this.showError("Нет доступных вайбов");
+                return;
+            }
+
+            // Если кнопки уже показаны - скрываем их
+            if (vibeButtonsContainer.style.display === 'grid') {
+                vibeButtonsContainer.style.display = 'none';
+                findByVibeBtn.textContent = 'По вайбу';
                 return;
             }
 
@@ -110,10 +131,7 @@ class FoodFinder {
 
             vibeButtonsContainer.innerHTML = buttons;
             vibeButtonsContainer.style.display = 'grid';
-            vibeButtonsContainer.style.gap = '10px';
-            vibeButtonsContainer.style.justifyContent = 'center';
-            vibeButtonsContainer.style.maxWidth = '800px';
-            vibeButtonsContainer.style.margin = '20px auto';
+            findByVibeBtn.textContent = 'Скрыть вайбы';
 
             // Add click handlers
             document.querySelectorAll('.vibe-button').forEach(button => {
@@ -767,7 +785,6 @@ class FoodFinder {
                 }
             });
             this.placeMarkers = [];
-            this.highlightedMarker = null;
         }
     }
 }
