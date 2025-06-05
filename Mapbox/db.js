@@ -108,6 +108,13 @@ class PlacesDatabase {
                         );
                     }
                 });
+
+                // Сортируем места по расстоянию
+                places.sort((a, b) => {
+                    if (!a.distance) return 1;
+                    if (!b.distance) return -1;
+                    return a.distance - b.distance;
+                });
             }
 
             console.log('Found places:', places);

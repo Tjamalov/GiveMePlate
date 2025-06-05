@@ -305,7 +305,7 @@ class FoodFinder {
                 );
                 place.distance = distance; // Сохраняем расстояние в объекте места
                 return distance <= 1000;
-            });
+            }).sort((a, b) => a.distance - b.distance); // Сортируем ближние места
 
             const farPlaces = places.filter(place => {
                 if (!place.location || !place.location.coordinates) return false;
@@ -318,7 +318,7 @@ class FoodFinder {
                 );
                 place.distance = distance; // Сохраняем расстояние в объекте места
                 return distance > 1000;
-            });
+            }).sort((a, b) => a.distance - b.distance); // Сортируем дальние места
 
             console.log('Places divided:', {
                 total: places.length,
