@@ -106,6 +106,8 @@ class FoodFinder {
             const vibes = await this.db.getUniqueVibes();
             const vibeButtonsContainer = document.getElementById('vibeButtons');
             const findByVibeBtn = document.getElementById('findByVibeBtn');
+            const resultsContainer = document.getElementById('results');
+            const mapContainer = document.getElementById('map-container');
             
             if (vibes.length === 0) {
                 this.showError("Нет доступных вайбов");
@@ -118,6 +120,15 @@ class FoodFinder {
                 findByVibeBtn.textContent = 'По вайбу';
                 return;
             }
+
+            // Скрываем результаты и карту
+            resultsContainer.innerHTML = '';
+            if (this.map) {
+                this.map.remove();
+                this.map = null;
+            }
+            mapContainer.style.display = 'none';
+            this.clearPlaceMarkers();
 
             // Create buttons for each vibe with emojis only
             const buttons = vibes.map(vibe => {
