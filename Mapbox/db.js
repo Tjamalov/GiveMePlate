@@ -24,11 +24,28 @@ function initializeSupabase() {
 class PlacesDatabase {
     constructor() {
         console.log('Creating PlacesDatabase instance...');
+        this.supabase = null;
+        this.cache = {
+            allPlaces: null,
+            vibes: null,
+            vibePlaces: {}
+        };
+        this.initializeSupabase();
+    }
+
+    initializeSupabase() {
         this.supabase = initializeSupabase();
     }
 
     async getUniqueVibes() {
         console.log('Fetching unique vibes...');
+        
+        // Проверяем кэш
+        if (this.cache.vibes) {
+            console.log('Using cached vibes');
+            return this.cache.vibes;
+        }
+
         try {
             const { data, error } = await this.supabase
                 .from('places')
@@ -38,30 +55,29 @@ class PlacesDatabase {
 
             if (error) throw error;
 
-            // Get unique vibes and filter out null/empty values
-            const uniqueVibes = [...new Set(data.map(place => place.vibe).filter(Boolean))];
+            const uniqueVibes = [...new Set(data.map(item => item.vibe))];
             console.log('Unique vibes:', uniqueVibes);
+            
+            // Кэшируем результаты
+            this.cache.vibes = uniqueVibes;
+            
             return uniqueVibes;
         } catch (error) {
-            console.error('Error fetching unique vibes:', error);
+            console.error('Error in getUniqueVibes:', error);
             throw error;
         }
     }
 
-    async searchPlacesByVibe(vibe, latitude, longitude, radius = 1000, limit = 1000) {
+    async searchPlacesByVibe(vibe, latitude, longitude, radius = 1000, dbRadius = 30000, limit = 1000) {
         console.log('Searching places by vibe:', vibe);
-        // Используем больший радиус для поиска в базе
-        const dbRadius = 30000; // 30 км
-        console.log('Using PostGIS with parameters:', {
-            vibe,
-            latitude,
-            longitude,
-            radius,
-            dbRadius,
-            limit,
-            point: `POINT(${longitude} ${latitude})`,
-            distance: `${radius} meters (client) / ${dbRadius} meters (db)`
-        });
+        
+        // Проверяем кэш
+        if (this.cache.vibePlaces[vibe]) {
+            console.log('Using cached places for vibe:', vibe);
+            return this.cache.vibePlaces[vibe];
+        }
+
+        console.log('Using PostGIS with parameters:', { vibe, latitude, longitude, radius, dbRadius, limit });
         
         try {
             const { data, error } = await this.supabase
@@ -74,57 +90,38 @@ class PlacesDatabase {
                 });
 
             if (error) throw error;
-            
-            // Фильтруем результаты на клиенте
-            const filteredData = data.map(place => ({
-                ...place,
-                distance: this.calculateDistance(
-                    latitude,
-                    longitude,
-                    place.location.coordinates[1],
-                    place.location.coordinates[0]
-                )
-            }));
 
             console.log('PostGIS search results:', {
-                totalPlaces: filteredData?.length,
-                nearbyPlaces: filteredData?.filter(p => p.distance <= radius).length,
-                farPlaces: filteredData?.filter(p => p.distance > radius).length,
-                places: filteredData?.map(p => ({
-                    name: p.name,
-                    distance: p.distance,
-                    coordinates: p.location?.coordinates,
-                    location: p.location,
-                    geometry: p.location?.type,
-                    srid: p.location?.srid
-                }))
+                totalPlaces: data.length,
+                nearbyPlaces: data.filter(p => p.distance <= radius).length,
+                farPlaces: data.filter(p => p.distance > radius).length,
+                places: data
             });
+
+            // Кэшируем результаты
+            this.cache.vibePlaces[vibe] = data;
             
-            return filteredData || [];
+            return data;
         } catch (error) {
-            console.error('Error searching places by vibe:', error);
+            console.error('Error in searchPlacesByVibe:', error);
             throw error;
         }
     }
 
-    async searchPlaces(latitude, longitude, radius = 1000, limit = 1000) {
+    async searchPlaces(latitude, longitude, radius = 1000, dbRadius = 30000, limit = 1000) {
         console.log('Starting searchPlaces...');
-        // Используем больший радиус для поиска в базе
-        const dbRadius = 30000; // 30 км
-        console.log('Using PostGIS with parameters:', {
-            latitude,
-            longitude,
-            radius,
-            dbRadius,
-            limit,
-            point: `POINT(${longitude} ${latitude})`,
-            distance: `${radius} meters (client) / ${dbRadius} meters (db)`
-        });
+        
+        // Проверяем кэш
+        if (this.cache.allPlaces) {
+            console.log('Using cached places');
+            return this.cache.allPlaces;
+        }
+
+        console.log('Using PostGIS with parameters:', { latitude, longitude, radius, dbRadius, limit });
         
         try {
             console.log('Executing Supabase query with PostGIS...');
-            
-            const { data, error, count } = await this.supabase
+            const { data, error } = await this.supabase
                 .rpc('search_places', {
                     p_lat: latitude,
                     p_lon: longitude,
@@ -132,49 +129,19 @@ class PlacesDatabase {
                     p_limit: limit
                 });
 
-            // Фильтруем результаты на клиенте
-            const filteredData = data.map(place => ({
-                ...place,
-                distance: this.calculateDistance(
-                    latitude,
-                    longitude,
-                    place.location.coordinates[1],
-                    place.location.coordinates[0]
-                )
-            }));
+            if (error) throw error;
 
             console.log('PostGIS search results:', {
-                totalPlaces: filteredData?.length,
-                nearbyPlaces: filteredData?.filter(p => p.distance <= radius).length,
-                farPlaces: filteredData?.filter(p => p.distance > radius).length,
-                places: filteredData?.map(p => ({
-                    name: p.name,
-                    distance: p.distance,
-                    coordinates: p.location?.coordinates,
-                    location: p.location,
-                    geometry: p.location?.type,
-                    srid: p.location?.srid
-                }))
+                totalPlaces: data.length,
+                nearbyPlaces: data.filter(p => p.distance <= radius).length,
+                farPlaces: data.filter(p => p.distance > radius).length,
+                places: data
             });
 
-            if (error) {
-                console.error('Supabase query error:', error);
-                throw error;
-            }
-
-            if (!filteredData || filteredData.length === 0) {
-                console.warn('No data returned from places table');
-                return [];
-            }
-
-            const distances = filteredData.map(p => p.distance);
-            console.log('Distances calculated by PostGIS:', {
-                min: Math.min(...distances),
-                max: Math.max(...distances),
-                avg: distances.reduce((a, b) => a + b, 0) / distances.length
-            });
-
-            return filteredData;
+            // Кэшируем результаты
+            this.cache.allPlaces = data;
+            
+            return data;
         } catch (error) {
             console.error('Error in searchPlaces:', error);
             throw error;
@@ -243,6 +210,15 @@ class PlacesDatabase {
             console.error('Error getting place reviews:', error);
             throw error;
         }
+    }
+
+    clearCache() {
+        console.log('Clearing database cache');
+        this.cache = {
+            allPlaces: null,
+            vibes: null,
+            vibePlaces: {}
+        };
     }
 }
 

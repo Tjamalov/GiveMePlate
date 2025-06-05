@@ -7,7 +7,7 @@ class FoodFinder {
         this.allPlaces = [];
         this.selectedVibe = null;
         this.watchId = null;
-        this.geolocationPermission = localStorage.getItem('geolocationPermission') || 'prompt';
+        this.currentPosition = null;
         
         // Маппинг вайбов на эмоджи
         this.vibeEmojis = {
@@ -35,16 +35,54 @@ class FoodFinder {
         this.initializeEventListeners();
     }
 
+    async getCurrentPosition() {
+        console.log('getCurrentPosition called');
+
+        // Если у нас уже есть позиция и watchId, используем её
+        if (this.currentPosition && this.watchId) {
+            console.log('Using cached position');
+            return this.currentPosition;
+        }
+
+        return new Promise((resolve, reject) => {
+            // Сначала пробуем получить позицию один раз
+            navigator.geolocation.getCurrentPosition(
+                position => {
+                    console.log('Initial position received');
+                    this.currentPosition = position;
+                    
+                    // После успешного получения позиции, начинаем отслеживать изменения
+                    this.watchId = navigator.geolocation.watchPosition(
+                        newPosition => {
+                            console.log('Position updated');
+                            this.currentPosition = newPosition;
+                        },
+                        error => {
+                            console.error('Watch position error:', error);
+                        },
+                        { enableHighAccuracy: true }
+                    );
+                    
+                    resolve(position);
+                },
+                error => {
+                    console.error('getCurrentPosition error:', error);
+                    reject(error);
+                },
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+            );
+        });
+    }
+
     initializeEventListeners() {
-        document.getElementById('findPlacesBtn').addEventListener('click', () => {
-            this.findPlaces();
-        });
-        
-        document.getElementById('luckyBtn').addEventListener('click', () => {
-            this.findLuckyPlace();
-        });
-        
+        document.getElementById('findPlacesBtn').addEventListener('click', () => this.findPlaces());
         document.getElementById('findByVibeBtn').addEventListener('click', () => this.showVibeButtons());
+        document.getElementById('luckyBtn').addEventListener('click', () => this.findLuckyPlace());
+        document.getElementById('clearCacheBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.db.clearCache();
+            window.location.reload();
+        });
     }
 
     async findPlaces() {
@@ -67,12 +105,6 @@ class FoodFinder {
         console.log('Getting current position...');
 
         try {
-            // Проверяем статус разрешения
-            if (this.geolocationPermission === 'denied') {
-                this.showError('Для работы приложения необходим доступ к геолокации. Пожалуйста, разрешите доступ в настройках браузера.');
-                return;
-            }
-
             const position = await this.getCurrentPosition();
             const { latitude, longitude } = position.coords;
             console.log('Got position:', { latitude, longitude });
@@ -116,23 +148,29 @@ class FoodFinder {
         }
     }
 
-    async showVibeButtons() {
+    showVibeButtons() {
+        const vibeButtonsContainer = document.getElementById('vibeButtons');
+        const findByVibeBtn = document.getElementById('findByVibeBtn');
+        
+        if (vibeButtonsContainer.style.display === 'grid') {
+            vibeButtonsContainer.style.display = 'none';
+            findByVibeBtn.textContent = 'По вайбу';
+        } else {
+            this.loadAndShowVibeButtons();
+            vibeButtonsContainer.style.display = 'grid';
+            findByVibeBtn.textContent = 'Скрыть вайбы';
+        }
+    }
+
+    async loadAndShowVibeButtons() {
         try {
             const vibes = await this.db.getUniqueVibes();
             const vibeButtonsContainer = document.getElementById('vibeButtons');
-            const findByVibeBtn = document.getElementById('findByVibeBtn');
             const resultsContainer = document.getElementById('results');
             const mapContainer = document.getElementById('map-container');
             
             if (vibes.length === 0) {
                 this.showError("Нет доступных вайбов");
-                return;
-            }
-
-            // Если кнопки уже показаны - скрываем их
-            if (vibeButtonsContainer.style.display === 'grid') {
-                vibeButtonsContainer.style.display = 'none';
-                findByVibeBtn.textContent = 'По вайбу';
                 return;
             }
 
@@ -159,8 +197,6 @@ class FoodFinder {
             }).join('');
 
             vibeButtonsContainer.innerHTML = buttons;
-            vibeButtonsContainer.style.display = 'grid';
-            findByVibeBtn.textContent = 'Скрыть вайбы';
 
             // Add click handlers
             document.querySelectorAll('.vibe-button').forEach(button => {
@@ -179,12 +215,6 @@ class FoodFinder {
 
                     // Get current position and search places
                     try {
-                        // Проверяем статус разрешения
-                        if (this.geolocationPermission === 'denied') {
-                            this.showError('Для работы приложения необходим доступ к геолокации. Пожалуйста, разрешите доступ в настройках браузера.');
-                            return;
-                        }
-
                         const position = await this.getCurrentPosition();
                         const { latitude, longitude } = position.coords;
                         this.initializeOrUpdateMap(latitude, longitude);
@@ -410,69 +440,6 @@ class FoodFinder {
                 }
             });
         }
-    }
-
-    async checkGeolocationPermission() {
-        if (this.geolocationPermission !== null) {
-            return this.geolocationPermission;
-        }
-
-        if (navigator.permissions && navigator.permissions.query) {
-            try {
-                const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
-                this.geolocationPermission = permissionStatus.state;
-                return permissionStatus.state;
-            } catch (error) {
-                console.warn('Permissions API not supported:', error);
-                return 'prompt';
-            }
-        }
-        return 'prompt';
-    }
-
-    async getCurrentPosition() {
-        return new Promise((resolve, reject) => {
-            // Проверяем сохраненный статус разрешения
-            const savedPermission = localStorage.getItem('geolocationPermission');
-            if (savedPermission === 'granted') {
-                // Если разрешение уже получено, используем watchPosition
-                this.watchId = navigator.geolocation.watchPosition(
-                    position => {
-                        resolve(position);
-                        if (this.watchId) {
-                            navigator.geolocation.clearWatch(this.watchId);
-                            this.watchId = null;
-                        }
-                    },
-                    error => {
-                        if (error.code === error.PERMISSION_DENIED) {
-                            this.geolocationPermission = 'denied';
-                            localStorage.setItem('geolocationPermission', 'denied');
-                        }
-                        reject(error);
-                    },
-                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-                );
-                return;
-            }
-
-            // Если разрешение еще не запрошено или было отклонено
-            navigator.geolocation.getCurrentPosition(
-                position => {
-                    this.geolocationPermission = 'granted';
-                    localStorage.setItem('geolocationPermission', 'granted');
-                    resolve(position);
-                },
-                error => {
-                    if (error.code === error.PERMISSION_DENIED) {
-                        this.geolocationPermission = 'denied';
-                        localStorage.setItem('geolocationPermission', 'denied');
-                    }
-                    reject(error);
-                },
-                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-            );
-        });
     }
 
     initializeOrUpdateMap(lat, lon) {
@@ -880,41 +847,11 @@ class FoodFinder {
         }
     }
 
-    async requestGeolocationPermission() {
-        // Если разрешение уже получено, возвращаем успех
-        if (this.geolocationPermission === 'granted') {
-            return Promise.resolve();
-        }
-
-        // Если разрешение было отклонено, возвращаем ошибку
-        if (this.geolocationPermission === 'denied') {
-            return Promise.reject(new Error('Geolocation permission denied'));
-        }
-
-        // Если разрешение еще не запрошено, запрашиваем его
-        return new Promise((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(
-                position => {
-                    this.geolocationPermission = 'granted';
-                    localStorage.setItem('geolocationPermission', 'granted');
-                    resolve(position);
-                },
-                error => {
-                    this.geolocationPermission = 'denied';
-                    localStorage.setItem('geolocationPermission', 'denied');
-                    reject(error);
-                },
-                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-            );
-        });
-    }
-
     async handleGeolocationError(error) {
         console.error('Geolocation error:', error);
         
         if (error.code === error.PERMISSION_DENIED) {
             this.geolocationPermission = 'denied';
-            localStorage.setItem('geolocationPermission', 'denied');
             this.showError('Для работы приложения необходим доступ к геолокации. Пожалуйста, разрешите доступ в настройках браузера.');
         } else if (error.code === error.POSITION_UNAVAILABLE) {
             this.showError('Информация о местоположении недоступна. Пожалуйста, проверьте настройки геолокации на вашем устройстве.');
@@ -923,6 +860,19 @@ class FoodFinder {
         } else {
             this.showError('Произошла ошибка при получении местоположения. Пожалуйста, попробуйте еще раз.');
         }
+    }
+
+    showMessage(message) {
+        const results = document.getElementById('results');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message';
+        messageDiv.textContent = message;
+        results.appendChild(messageDiv);
+        
+        // Удаляем сообщение через 3 секунды
+        setTimeout(() => {
+            messageDiv.remove();
+        }, 3000);
     }
 }
 
