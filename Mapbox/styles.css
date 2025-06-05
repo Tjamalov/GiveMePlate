@@ -491,4 +491,48 @@ h1 {
     color: rgba(255, 255, 255, 0.7);
     margin: 20px 0;
     font-size: 16px;
+}
+
+/* Стили для фотографий в карточках списка */
+.place-photos {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+
+.place-photo {
+    flex: 0 0 96px;
+    height: 96px;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.place-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Стили для фотографий в деталях места */
+.place-details .place-photos {
+    display: flex;
+    gap: 16px;
+    margin-top: 16px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+}
+
+.place-details .place-photo {
+    flex: 0 0 256px;
+    height: 256px;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.place-details .place-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 } 

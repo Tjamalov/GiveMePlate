@@ -72,7 +72,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 .setPopup(new mapboxgl.Popup().setHTML(`
                     <b>${place.name || 'Без названия'}</b>
                     <small>${place.type || ''}</small>
-                    <small>${place.distance ? `Расстояние: ${place.distance} м` : ''}</small>
+                    <div class="route-info">
+                        <div>🚶‍♂️ Пешком: ${Math.round(place.distance)} м</div>
+                        <div>⏱️ Время: ${Math.round(place.duration / 60)} мин</div>
+                    </div>
                     ${place.revew ? `<div>${place.revew}</div>` : ''}
                 `))
                 .addTo(map);
@@ -85,11 +88,70 @@ document.addEventListener('DOMContentLoaded', async () => {
             .setPopup(new mapboxgl.Popup().setHTML("<b>Ваше местоположение</b>"))
             .addTo(map);
 
-            // Центрируем карту между маркерами
-            const bounds = new mapboxgl.LngLatBounds();
-            bounds.extend([placeLon, placeLat]);
-            bounds.extend([userLon, userLat]);
-            map.fitBounds(bounds, { padding: 50 });
+            // Добавляем маршрут
+            const directionsRequest = `https://api.mapbox.com/directions/v5/mapbox/walking/${userLon},${userLat};${placeLon},${placeLat}?geometries=geojson&access_token=${mapboxgl.accessToken}`;
+
+            fetch(directionsRequest)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.routes && data.routes.length > 0) {
+                        const route = data.routes[0];
+                        const routeGeoJson = {
+                            type: 'Feature',
+                            properties: {},
+                            geometry: {
+                                type: 'LineString',
+                                coordinates: route.geometry.coordinates
+                            }
+                        };
+
+                        // Добавляем маршрут на карту
+                        map.addSource('route', {
+                            type: 'geojson',
+                            data: routeGeoJson
+                        });
+
+                        map.addLayer({
+                            id: 'route',
+                            type: 'line',
+                            source: 'route',
+                            layout: {
+                                'line-join': 'round',
+                                'line-cap': 'round'
+                            },
+                            paint: {
+                                'line-color': '#4CAF50',
+                                'line-width': 4,
+                                'line-dasharray': [2, 2]
+                            }
+                        });
+
+                        // Добавляем информацию о расстоянии и времени
+                        const distance = Math.round(route.distance);
+                        const duration = Math.round(route.duration / 60); // конвертируем секунды в минуты
+                        
+                        // Обновляем попап маркера места с информацией о маршруте
+                        placeMarker.setPopup(new mapboxgl.Popup().setHTML(`
+                            <b>${place.name || 'Без названия'}</b>
+                            <small>${place.type || ''}</small>
+                            <div class="route-info">
+                                <div>🚶‍♂️ Пешком: ${distance} м</div>
+                                <div>⏱️ Время: ${duration} мин</div>
+                            </div>
+                            ${place.revew ? `<div>${place.revew}</div>` : ''}
+                        `));
+
+                        // Обновляем границы карты, чтобы включить маршрут
+                        const bounds = new mapboxgl.LngLatBounds();
+                        route.geometry.coordinates.forEach(coord => {
+                            bounds.extend(coord);
+                        });
+                        map.fitBounds(bounds, { padding: 50 });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching route:', error);
+                });
 
             console.log('Markers added successfully');
         } catch (error) {
@@ -159,6 +221,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log('Searching for place with ID:', placeId);
             console.log('Available places:', places);
             
+            if (!placeId) {
+                showError("ID места не указан");
+                return;
+            }
+
+            if (places.length === 0) {
+                showError("Список мест не найден. Пожалуйста, вернитесь на главную страницу и попробуйте снова.");
+                return;
+            }
+            
             const place = places.find(p => p.id === placeId);
             console.log('Found place:', place);
             
@@ -183,9 +255,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                         hasUserLocation: !!userLocation,
                         hasPlaceLocation: !!(place.location && place.location.coordinates)
                     });
+                    showError("Не удалось получить данные о местоположении");
                 }
             } else {
-                showError("Место не найдено");
+                showError("Место не найдено. Возможно, вы перешли по устаревшей ссылке.");
             }
         }
     } catch (error) {
@@ -214,20 +287,22 @@ function displayPlace(place) {
     console.log('Displaying place:', place);
     const content = document.getElementById('content');
     
-    // Create photo HTML if placePhotos exists
+    // Create photos HTML if placePhotos exists
     let photoHtml = '';
     if (place.placephotos) {
-        console.log('Place has photo:', place.placephotos);
-        // Use the URL directly from placephotos since it's already a complete URL
-        const photoUrl = place.placephotos;
-        console.log('Using photo URL:', photoUrl);
+        console.log('Place has photos:', place.placephotos);
+        const photos = place.placephotos.split(',').map(url => url.trim());
         photoHtml = `
-            <div class="place-photo">
-                <img src="${photoUrl}" alt="${place.name}" onerror="console.error('Failed to load image:', this.src)" />
+            <div class="place-photos">
+                ${photos.map(photoUrl => `
+                    <div class="place-photo">
+                        <img src="${photoUrl}" alt="${place.name}" onerror="this.parentElement.remove()" />
+                    </div>
+                `).join('')}
             </div>
         `;
     } else {
-        console.log('No photo available for place');
+        console.log('No photos available for place');
     }
 
     content.innerHTML = `

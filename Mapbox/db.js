@@ -68,40 +68,33 @@ class PlacesDatabase {
         }
     }
 
-    async searchPlacesByVibe(vibe, latitude, longitude, radius = 1000, dbRadius = 30000, limit = 1000) {
-        console.log('Searching places by vibe:', vibe);
-        
-        // Проверяем кэш
-        if (this.cache.vibePlaces[vibe]) {
-            console.log('Using cached places for vibe:', vibe);
-            return this.cache.vibePlaces[vibe];
-        }
-
-        console.log('Using PostGIS with parameters:', { vibe, latitude, longitude, radius, dbRadius, limit });
-        
+    async searchPlacesByVibe(vibe) {
         try {
-            const { data, error } = await this.supabase
-                .rpc('search_places_by_vibe', {
-                    p_vibe: vibe,
-                    p_lat: latitude,
-                    p_lon: longitude,
-                    p_radius: dbRadius,
-                    p_limit: limit
-                });
-
-            if (error) throw error;
-
-            console.log('PostGIS search results:', {
-                totalPlaces: data.length,
-                nearbyPlaces: data.filter(p => p.distance <= radius).length,
-                farPlaces: data.filter(p => p.distance > radius).length,
-                places: data
-            });
-
-            // Кэшируем результаты
-            this.cache.vibePlaces[vibe] = data;
+            console.log('Searching places by vibe:', vibe);
             
-            return data;
+            // Проверяем, что vibe не пустой
+            if (!vibe || typeof vibe !== 'string') {
+                throw new Error('Invalid vibe parameter');
+            }
+
+            // Используем прямой запрос к таблице places
+            const { data: places, error } = await this.supabase
+                .from('places')
+                .select('*')
+                .ilike('vibe', vibe);
+
+            if (error) {
+                console.error('Supabase error:', error);
+                throw new Error(error.message || 'Ошибка при поиске мест');
+            }
+
+            if (!places || !Array.isArray(places)) {
+                console.error('Invalid response from Supabase:', places);
+                throw new Error('Некорректный ответ от сервера');
+            }
+
+            console.log('Found places:', places);
+            return places;
         } catch (error) {
             console.error('Error in searchPlacesByVibe:', error);
             throw error;
