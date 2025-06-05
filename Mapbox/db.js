@@ -93,6 +93,23 @@ class PlacesDatabase {
                 throw new Error('Некорректный ответ от сервера');
             }
 
+            // Получаем координаты пользователя из sessionStorage
+            const userLocation = JSON.parse(sessionStorage.getItem('userLocation'));
+            if (userLocation) {
+                // Добавляем расстояние для каждого места
+                places.forEach(place => {
+                    if (place.location && place.location.coordinates) {
+                        const [placeLon, placeLat] = place.location.coordinates;
+                        place.distance = this.calculateDistance(
+                            userLocation.latitude,
+                            userLocation.longitude,
+                            placeLat,
+                            placeLon
+                        );
+                    }
+                });
+            }
+
             console.log('Found places:', places);
             return places;
         } catch (error) {
