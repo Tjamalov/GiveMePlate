@@ -535,4 +535,35 @@ h1 {
     width: 100%;
     height: 100%;
     object-fit: cover;
+}
+
+/* Fullscreen photo viewer */
+.fullscreen-photo {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    cursor: pointer;
+}
+
+.fullscreen-photo img {
+    max-width: 90%;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+.place-photo {
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.place-photo:hover {
+    transform: scale(1.02);
 } 

@@ -74,7 +74,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <small>${place.type || ''}</small>
                     <div class="route-info">
                         <div>🚶‍♂️ Пешком: ${Math.round(place.distance)} м</div>
-                        <div>⏱️ Время: ${Math.round(place.duration / 60)} мин</div>
                     </div>
                     ${place.revew ? `<div>${place.revew}</div>` : ''}
                 `))
@@ -126,9 +125,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             }
                         });
 
-                        // Добавляем информацию о расстоянии и времени
+                        // Добавляем информацию о расстоянии
                         const distance = Math.round(route.distance);
-                        const duration = Math.round(route.duration / 60); // конвертируем секунды в минуты
                         
                         // Обновляем попап маркера места с информацией о маршруте
                         placeMarker.setPopup(new mapboxgl.Popup().setHTML(`
@@ -136,7 +134,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <small>${place.type || ''}</small>
                             <div class="route-info">
                                 <div>🚶‍♂️ Пешком: ${distance} м</div>
-                                <div>⏱️ Время: ${duration} мин</div>
                             </div>
                             ${place.revew ? `<div>${place.revew}</div>` : ''}
                         `));
@@ -295,7 +292,7 @@ function displayPlace(place) {
         photoHtml = `
             <div class="place-photos">
                 ${photos.map(photoUrl => `
-                    <div class="place-photo">
+                    <div class="place-photo" onclick="openFullscreenPhoto('${photoUrl}')">
                         <img src="${photoUrl}" alt="${place.name}" onerror="this.parentElement.remove()" />
                     </div>
                 `).join('')}
@@ -321,6 +318,24 @@ function displayPlace(place) {
     // Log the final HTML structure
     console.log('Generated HTML structure:', content.innerHTML);
 }
+
+function openFullscreenPhoto(photoUrl) {
+    const fullscreenPhoto = document.getElementById('fullscreenPhoto');
+    const fullscreenImg = fullscreenPhoto.querySelector('img');
+    fullscreenImg.src = photoUrl;
+    fullscreenPhoto.style.display = 'flex';
+}
+
+function closeFullscreenPhoto() {
+    const fullscreenPhoto = document.getElementById('fullscreenPhoto');
+    fullscreenPhoto.style.display = 'none';
+}
+
+// Добавляем обработчик клика по полноэкранному фото
+document.addEventListener('DOMContentLoaded', function() {
+    const fullscreenPhoto = document.getElementById('fullscreenPhoto');
+    fullscreenPhoto.addEventListener('click', closeFullscreenPhoto);
+});
 
 function showError(message) {
     const content = document.getElementById('content');

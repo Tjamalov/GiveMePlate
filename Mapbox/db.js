@@ -213,22 +213,6 @@ class PlacesDatabase {
         }
     }
 
-    async getPlaceReviews(placeId) {
-        try {
-            const { data, error } = await this.supabase
-                .from('reviews')
-                .select('*')
-                .eq('place_id', placeId)
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-            return data;
-        } catch (error) {
-            console.error('Error getting place reviews:', error);
-            throw error;
-        }
-    }
-
     clearCache() {
         console.log('Clearing database cache');
         this.cache = {
