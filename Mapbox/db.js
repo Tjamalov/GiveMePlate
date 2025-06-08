@@ -48,7 +48,7 @@ class PlacesDatabase {
 
         try {
             const { data, error } = await this.supabase
-                .from('places')
+                .from('meal_places')
                 .select('vibe')
                 .not('vibe', 'is', null)
                 .order('vibe');
@@ -77,9 +77,9 @@ class PlacesDatabase {
                 throw new Error('Invalid vibe parameter');
             }
 
-            // Используем прямой запрос к таблице places
+            // Используем прямой запрос к таблице meal_places
             const { data: places, error } = await this.supabase
-                .from('places')
+                .from('meal_places')
                 .select('*')
                 .ilike('vibe', vibe);
 
@@ -184,7 +184,7 @@ class PlacesDatabase {
     async getPlaceDetails(placeId) {
         try {
             const { data, error } = await this.supabase
-                .from('places')
+                .from('meal_places')
                 .select('*')
                 .eq('id', placeId)
                 .single();
