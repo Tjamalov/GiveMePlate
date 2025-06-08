@@ -258,15 +258,47 @@ class FoodFinder {
                 return;
             }
 
+            // Сохраняем все места
             this.allPlaces = places;
-            const resultsDiv = document.getElementById('results');
-            let html = `<h3>Места с вайбом "${vibe}":</h3>`;
-            html += places.map((place, index) => this.createPlaceHtml(place, index)).join('');
-            resultsDiv.innerHTML = html;
-            this.addPlaceMarkers(places);
-            this.addPlaceClickHandlers();
-            // Сохраняем места в sessionStorage
+            
+            // Разделяем места на ближние и дальние
+            const nearbyPlaces = places.filter(place => {
+                if (!place.location || !place.location.coordinates) return false;
+                const [placeLon, placeLat] = place.location.coordinates;
+                const distance = this.calculateDistance(
+                    latitude,
+                    longitude,
+                    placeLat,
+                    placeLon
+                );
+                place.distance = distance; // Сохраняем расстояние в объекте места
+                return distance <= 1000;
+            }).sort((a, b) => a.distance - b.distance); // Сортируем ближние места
+
+            const farPlaces = places.filter(place => {
+                if (!place.location || !place.location.coordinates) return false;
+                const [placeLon, placeLat] = place.location.coordinates;
+                const distance = this.calculateDistance(
+                    latitude,
+                    longitude,
+                    placeLat,
+                    placeLon
+                );
+                place.distance = distance; // Сохраняем расстояние в объекте места
+                return distance > 1000;
+            }).sort((a, b) => a.distance - b.distance); // Сортируем дальние места
+
+            console.log('Places divided:', {
+                total: places.length,
+                nearby: nearbyPlaces.length,
+                far: farPlaces.length
+            });
+
+            // Сохраняем все места в sessionStorage для placeDetails
             sessionStorage.setItem('places', JSON.stringify(places));
+
+            // Отображаем результаты с учетом расстояния
+            this.displayResultsByDistance(nearbyPlaces, farPlaces);
         } catch (error) {
             console.error('Error searching places by vibe:', error);
             this.showError('Ошибка при поиске мест: ' + (error.message || 'Неизвестная ошибка'));
@@ -351,9 +383,9 @@ class FoodFinder {
             'места';
         let html = `<h3>Найденные ${vibeText} в радиусе 1км:</h3>`;
         
-        // Показываем только первые 3 ближних места
-        const visibleNearbyPlaces = nearbyPlaces.slice(0, 3);
-        const hasMoreNearbyPlaces = nearbyPlaces.length > 3;
+        // Показываем только первые 5 ближних мест
+        const visibleNearbyPlaces = nearbyPlaces.slice(0, 5);
+        const hasMoreNearbyPlaces = nearbyPlaces.length > 5;
         
         if (visibleNearbyPlaces.length > 0) {
             // Используем индекс из оригинального массива this.allPlaces
@@ -369,7 +401,7 @@ class FoodFinder {
                         Показать все (${nearbyPlaces.length})
                     </button>
                     <div id="allNearbyPlaces" style="display: none;">
-                        ${nearbyPlaces.slice(3).map(place => {
+                        ${nearbyPlaces.slice(5).map(place => {
                             const originalIndex = this.allPlaces.findIndex(p => p.id === place.id);
                             return this.createPlaceHtml(place, originalIndex);
                         }).join('')}
@@ -431,8 +463,7 @@ class FoodFinder {
                 } else {
                     allNearbyPlacesDiv.style.display = 'none';
                     showAllNearbyBtn.textContent = `Показать все (${nearbyPlaces.length})`;
-                    // Возвращаем маркеры только для первых 3 мест
-                    this.clearPlaceMarkers();
+                    // Возвращаем маркеры только для видимых мест
                     this.addPlaceMarkers(visibleNearbyPlaces);
                 }
             });
@@ -447,17 +478,13 @@ class FoodFinder {
                 if (farPlacesDiv.style.display === 'none') {
                     farPlacesDiv.style.display = 'block';
                     showFarPlacesBtn.textContent = 'Скрыть дальние места';
-                    // Добавляем маркеры для дальних мест
-                    this.addPlaceMarkers(farPlaces);
+                    // Добавляем маркеры для всех мест
+                    this.addPlaceMarkers([...nearbyPlaces, ...farPlaces]);
                 } else {
                     farPlacesDiv.style.display = 'none';
                     showFarPlacesBtn.textContent = `А что есть дальше? (${farPlaces.length})`;
-                    // Удаляем маркеры дальних мест
-                    this.clearPlaceMarkers();
-                    // Возвращаем маркеры для видимых ближних мест
-                    if (visibleNearbyPlaces.length > 0) {
-                        this.addPlaceMarkers(visibleNearbyPlaces);
-                    }
+                    // Возвращаем маркеры только для ближних мест
+                    this.addPlaceMarkers(nearbyPlaces);
                 }
             });
         }
