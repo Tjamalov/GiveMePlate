@@ -148,17 +148,25 @@ class PlacesDatabase {
 
             if (error) throw error;
 
+            // Преобразуем PostGIS геометрию в формат, ожидаемый клиентом
+            const transformedData = data.map(place => ({
+                ...place,
+                location: {
+                    coordinates: [place.longitude, place.latitude]
+                }
+            }));
+
             console.log('PostGIS search results:', {
-                totalPlaces: data.length,
-                nearbyPlaces: data.filter(p => p.distance <= radius).length,
-                farPlaces: data.filter(p => p.distance > radius).length,
-                places: data
+                totalPlaces: transformedData.length,
+                nearbyPlaces: transformedData.filter(p => p.distance <= radius).length,
+                farPlaces: transformedData.filter(p => p.distance > radius).length,
+                places: transformedData
             });
 
             // Кэшируем результаты
-            this.cache.allPlaces = data;
+            this.cache.allPlaces = transformedData;
             
-            return data;
+            return transformedData;
         } catch (error) {
             console.error('Error in searchPlaces:', error);
             throw error;
