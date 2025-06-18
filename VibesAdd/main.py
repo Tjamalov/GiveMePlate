@@ -169,8 +169,10 @@ def list_places(update: Update, context: CallbackContext) -> None:
         # Формируем сообщение
         message = "📍 Ближайшие места:\n\n"
         for place in page_places:
+            # Безопасно получаем ID, преобразуя в строку
+            place_id = str(place.get('id', 'N/A'))
             message += (
-                f"ID: {place['id']}\n"
+                f"ID: {place_id}\n"
                 f"Название: {place['name']}\n"
                 f"Вайб: {place['vibe']}\n"
                 f"Тип: {place['type']}\n"
@@ -470,45 +472,18 @@ def handle_photo(update: Update, context: CallbackContext) -> int:
         os.remove(temp_path)
         
         # Запрашиваем описание места
+        logger.info("Запрашиваем описание места у пользователя")
         update.message.reply_text(
             "Отлично! Теперь напишите описание места. "
             "Опишите атмосферу, особенности, что здесь можно делать."
         )
+        logger.info("Переходим к состоянию REVIEW")
         return REVIEW
         
     except Exception as e:
         logger.error(f"Ошибка при обработке фото: {str(e)}")
         update.message.reply_text("Произошла ошибка при обработке фото. Попробуйте еще раз.")
         return PHOTO
-
-def generate_next_id() -> str:
-    """Генерирует следующий ID для нового места с учетом формата (01, 02, ..., 09, 10, 11, ...)."""
-    response = supabase.table('meal_places').select('id').execute()
-    
-    # Преобразуем все ID в числа, игнорируя ведущие нули
-    existing_ids = []
-    for place in response.data:
-        try:
-            # Преобразуем строковый ID в число, игнорируя ведущие нули
-            num_id = int(place['id'])
-            existing_ids.append(num_id)
-        except ValueError:
-            logger.warning(f"Пропущен некорректный ID: {place['id']}")
-            continue
-    
-    # Находим максимальное значение
-    max_id = max(existing_ids) if existing_ids else 0
-    
-    # Генерируем следующий ID
-    next_id = max_id + 1
-    
-    # Форматируем ID в зависимости от его значения
-    if next_id < 10:
-        # Для чисел 1-9 добавляем ведущий ноль
-        return f"0{next_id}"
-    else:
-        # Для чисел 10+ оставляем как есть
-        return str(next_id)
 
 def add_place_review(update: Update, context: CallbackContext) -> int:
     """Сохраняем описание и добавляем место в базу данных."""
@@ -527,9 +502,8 @@ def add_place_review(update: Update, context: CallbackContext) -> int:
         context.user_data['revew'] = review
         logger.info("Описание места сохранено")
         
-        # Получаем все данные места
+        # Получаем все данные места (без ID - он генерируется автоматически)
         place_data = {
-            'id': generate_next_id(),
             'name': context.user_data.get('name'),
             'vibe': context.user_data.get('vibe'),
             'type': context.user_data.get('type'),
@@ -541,19 +515,59 @@ def add_place_review(update: Update, context: CallbackContext) -> int:
             'placephotos': context.user_data.get('placephotos')  # Добавляем URL фото
         }
         
+        # Приводим типы данных к правильным форматам
+        try:
+            # Преобразуем координаты в float
+            place_data['longitude'] = float(place_data['longitude']) if place_data['longitude'] is not None else None
+            place_data['latitude'] = float(place_data['latitude']) if place_data['latitude'] is not None else None
+            
+            # Убираем None значения, которые могут вызвать проблемы
+            place_data = {k: v for k, v in place_data.items() if v is not None}
+            
+            logger.info(f"[DATABASE] Подготовленные данные для вставки: {place_data}")
+            
+            # Логируем типы данных для диагностики
+            logger.info(f"[DATABASE] Типы данных:")
+            for key, value in place_data.items():
+                logger.info(f"[DATABASE] {key}: {type(value).__name__} = {value}")
+            
+            # Проверяем наличие обязательных полей
+            required_fields = ['name', 'vibe', 'type', 'address', 'longitude', 'latitude', 'location', 'revew']
+            missing_fields = [field for field in required_fields if field not in place_data or place_data[field] is None]
+            
+            if missing_fields:
+                logger.error(f"[DATABASE] Отсутствуют обязательные поля: {missing_fields}")
+                update.message.reply_text(f"Отсутствуют обязательные данные: {', '.join(missing_fields)}. Попробуйте еще раз.")
+                return REVIEW
+            
+            logger.info(f"[DATABASE] Все обязательные поля присутствуют")
+            
+        except (ValueError, TypeError) as e:
+            logger.error(f"[DATABASE] Ошибка при приведении типов данных: {e}")
+            update.message.reply_text("Произошла ошибка при подготовке данных. Попробуйте еще раз.")
+            return REVIEW
+        
         # Добавляем место в базу данных
-        logger.info("Добавляем место в базу данных")
+        logger.info("[DATABASE] Отправляем запрос к Supabase для добавления места")
         response = supabase.table('meal_places').insert(place_data).execute()
         
+        logger.info(f"[DATABASE] Получен ответ от Supabase: {response}")
+        logger.info(f"[DATABASE] Данные в ответе: {response.data}")
+        
         if not response.data:
-            logger.error("Ошибка при добавлении места: нет данных в ответе")
+            logger.error("[DATABASE] Ошибка при добавлении места: нет данных в ответе")
             update.message.reply_text("Произошла ошибка при добавлении места. Попробуйте еще раз.")
             return REVIEW
+        
+        # Получаем сгенерированный ID из ответа базы данных
+        inserted_place = response.data[0]
+        generated_id = inserted_place.get('id', 'N/A')
+        logger.info(f"[DATABASE] Сгенерированный ID: {generated_id}")
             
         # Отправляем сообщение об успехе
         success_message = (
             f"✅ Место успешно добавлено!\n\n"
-            f"ID: {place_data['id']}\n"
+            f"ID: {generated_id}\n"
             f"Название: {place_data['name']}\n"
             f"Вайб: {place_data['vibe']}\n"
             f"Тип: {place_data['type']}\n"
@@ -561,7 +575,8 @@ def add_place_review(update: Update, context: CallbackContext) -> int:
         )
         if place_data.get('placephotos'):
             success_message += f"\nФото: {place_data['placephotos']}"
-            
+        
+        logger.info(f"[DATABASE] Отправляем сообщение об успехе: {success_message}")
         update.message.reply_text(success_message)
         
         # Показываем главное меню
@@ -571,7 +586,9 @@ def add_place_review(update: Update, context: CallbackContext) -> int:
         return ConversationHandler.END
             
     except Exception as e:
-        logger.error(f"Ошибка при добавлении места: {str(e)}")
+        logger.error(f"[DATABASE] Ошибка при добавлении места: {str(e)}")
+        logger.error(f"[DATABASE] Тип ошибки: {type(e).__name__}")
+        logger.error(f"[DATABASE] Полный traceback:", exc_info=True)
         update.message.reply_text("Произошла ошибка при добавлении места. Попробуйте еще раз.")
         return REVIEW
 
@@ -638,49 +655,100 @@ def extract_street_and_house(address_data):
     logger.info(f"[ADDRESS_PARSING] Начало извлечения улицы и дома из данных: {address_data}")
     
     try:
-        # Проверяем наличие улицы
-        if 'road' in address_data:
-            street = address_data['road']
-            house_number = address_data.get('house_number', '')
+        # Проверяем наличие вложенного объекта 'address'
+        if 'address' in address_data and isinstance(address_data['address'], dict):
+            address_info = address_data['address']
+            logger.info(f"[ADDRESS_PARSING] Найден объект 'address': {address_info}")
             
-            logger.info(f"[ADDRESS_PARSING] Найдена улица 'road': {street}")
-            logger.info(f"[ADDRESS_PARSING] Номер дома: {house_number}")
-            
-            if house_number:
-                result = f"{street}, {house_number}"
-                logger.info(f"[ADDRESS_PARSING] Результат: {result}")
-                return result
-            else:
-                logger.info(f"[ADDRESS_PARSING] Результат (только улица): {street}")
-                return street
+            # Ищем улицу в объекте address
+            if 'road' in address_info:
+                street = address_info['road']
+                house_number = address_info.get('house_number', '')
                 
-        elif 'street' in address_data:
-            street = address_data['street']
-            house_number = address_data.get('house_number', '')
-            
-            logger.info(f"[ADDRESS_PARSING] Найдена улица 'street': {street}")
-            logger.info(f"[ADDRESS_PARSING] Номер дома: {house_number}")
-            
-            if house_number:
-                result = f"{street}, {house_number}"
-                logger.info(f"[ADDRESS_PARSING] Результат: {result}")
-                return result
-            else:
-                logger.info(f"[ADDRESS_PARSING] Результат (только улица): {street}")
-                return street
-        else:
-            logger.warning(f"[ADDRESS_PARSING] Улица не найдена в данных адреса")
-            logger.info(f"[ADDRESS_PARSING] Доступные ключи: {list(address_data.keys())}")
-            
-            # Если нет улицы, пробуем найти что-то похожее
-            for key in ['name', 'amenity', 'building']:
-                if key in address_data:
-                    result = address_data[key]
-                    logger.info(f"[ADDRESS_PARSING] Найден альтернативный ключ '{key}': {result}")
+                logger.info(f"[ADDRESS_PARSING] Найдена улица 'road': {street}")
+                logger.info(f"[ADDRESS_PARSING] Номер дома: {house_number}")
+                
+                if house_number:
+                    result = f"{street}, {house_number}"
+                    logger.info(f"[ADDRESS_PARSING] Результат: {result}")
                     return result
+                else:
+                    logger.info(f"[ADDRESS_PARSING] Результат (только улица): {street}")
+                    return street
+                    
+            elif 'street' in address_info:
+                street = address_info['street']
+                house_number = address_info.get('house_number', '')
+                
+                logger.info(f"[ADDRESS_PARSING] Найдена улица 'street': {street}")
+                logger.info(f"[ADDRESS_PARSING] Номер дома: {house_number}")
+                
+                if house_number:
+                    result = f"{street}, {house_number}"
+                    logger.info(f"[ADDRESS_PARSING] Результат: {result}")
+                    return result
+                else:
+                    logger.info(f"[ADDRESS_PARSING] Результат (только улица): {street}")
+                    return street
+            else:
+                logger.warning(f"[ADDRESS_PARSING] Улица не найдена в объекте 'address'")
+                logger.info(f"[ADDRESS_PARSING] Доступные ключи в 'address': {list(address_info.keys())}")
+                
+                # Если нет улицы, пробуем найти что-то похожее
+                for key in ['name', 'amenity', 'building']:
+                    if key in address_info:
+                        result = address_info[key]
+                        logger.info(f"[ADDRESS_PARSING] Найден альтернативный ключ '{key}': {result}")
+                        return result
+                
+                logger.warning(f"[ADDRESS_PARSING] Не найдено подходящих данных для адреса")
+                return None
+        else:
+            # Fallback: проверяем в корне объекта (для обратной совместимости)
+            logger.info(f"[ADDRESS_PARSING] Объект 'address' не найден, проверяем корень")
             
-            logger.warning(f"[ADDRESS_PARSING] Не найдено подходящих данных для адреса")
-            return None
+            if 'road' in address_data:
+                street = address_data['road']
+                house_number = address_data.get('house_number', '')
+                
+                logger.info(f"[ADDRESS_PARSING] Найдена улица 'road' в корне: {street}")
+                logger.info(f"[ADDRESS_PARSING] Номер дома: {house_number}")
+                
+                if house_number:
+                    result = f"{street}, {house_number}"
+                    logger.info(f"[ADDRESS_PARSING] Результат: {result}")
+                    return result
+                else:
+                    logger.info(f"[ADDRESS_PARSING] Результат (только улица): {street}")
+                    return street
+                    
+            elif 'street' in address_data:
+                street = address_data['street']
+                house_number = address_data.get('house_number', '')
+                
+                logger.info(f"[ADDRESS_PARSING] Найдена улица 'street' в корне: {street}")
+                logger.info(f"[ADDRESS_PARSING] Номер дома: {house_number}")
+                
+                if house_number:
+                    result = f"{street}, {house_number}"
+                    logger.info(f"[ADDRESS_PARSING] Результат: {result}")
+                    return result
+                else:
+                    logger.info(f"[ADDRESS_PARSING] Результат (только улица): {street}")
+                    return street
+            else:
+                logger.warning(f"[ADDRESS_PARSING] Улица не найдена в данных адреса")
+                logger.info(f"[ADDRESS_PARSING] Доступные ключи: {list(address_data.keys())}")
+                
+                # Если нет улицы, пробуем найти что-то похожее
+                for key in ['name', 'amenity', 'building']:
+                    if key in address_data:
+                        result = address_data[key]
+                        logger.info(f"[ADDRESS_PARSING] Найден альтернативный ключ '{key}': {result}")
+                        return result
+                
+                logger.warning(f"[ADDRESS_PARSING] Не найдено подходящих данных для адреса")
+                return None
             
     except Exception as e:
         logger.error(f"[ADDRESS_PARSING] Ошибка при извлечении улицы и дома: {e}")
