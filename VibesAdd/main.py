@@ -1,6 +1,6 @@
 import logging
 import os
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext, MessageHandler, Filters, ConversationHandler
 from config import TELEGRAM_BOT_TOKEN, AUTHORIZED_USERS
 from supabase_client import supabase
@@ -231,6 +231,11 @@ def handle_location(update: Update, context: CallbackContext) -> None:
         logger.info("Геолокация получена в процессе добавления места, пропускаем обработку")
         return
     
+    # Проверяем, находимся ли мы в процессе редактирования места
+    if context.user_data.get('editing_place') or context.user_data.get('edit_name') or context.user_data.get('edit_vibe') or context.user_data.get('edit_type'):
+        logger.info("Геолокация получена в процессе редактирования места, пропускаем обработку")
+        return
+    
     # Если это для показа списка мест
     logger.info("Геолокация получена для показа мест")
     list_places(update, context)
@@ -395,10 +400,10 @@ def add_place_location(update: Update, context: CallbackContext) -> int:
     context.user_data['address'] = address
     logger.info(f"[LOCATION] Адрес получен и сохранен в контексте: {address}")
     
-    # Запрашиваем фото места
-    logger.info("[LOCATION] Запрашиваем фото места у пользователя")
+    # Очищаем reply-клавиатуру
     update.message.reply_text(
-        "Отлично! Теперь отправьте фото места."
+        "Отлично! Теперь отправьте фото места.",
+        reply_markup=ReplyKeyboardRemove()
     )
     return PHOTO
 
@@ -608,8 +613,11 @@ def cancel(update: Update, context: CallbackContext) -> int:
     # Очищаем данные
     context.user_data.clear()
     
-    # Отправляем сообщение об отмене
-    update.message.reply_text("❌ Операция отменена.")
+    # Отправляем сообщение об отмене с очисткой клавиатуры
+    update.message.reply_text(
+        "❌ Операция отменена.",
+        reply_markup=ReplyKeyboardRemove()
+    )
     
     # Показываем главное меню
     show_main_menu(update, context)
@@ -852,14 +860,13 @@ def handle_edit_confirmation(update: Update, context: CallbackContext) -> int:
         # Устанавливаем начальное состояние для функции skip
         context.user_data['current_edit_state'] = EDIT_NAME
         
-        # Начинаем процесс редактирования - запрашиваем новое название
-        query.message.reply_text(
-            "Введите новое название места:"
-        )
+        # Начинаем процесс редактирования - запрашиваем новое название с кнопкой пропуска
+        keyboard = [[InlineKeyboardButton("⏭️ Пропустить", callback_data='edit_skip')]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
         
-        # Отправляем дополнительное сообщение
         query.message.reply_text(
-            "Или нажмите /skip чтобы пропустить:"
+            "Введите новое название места:",
+            reply_markup=reply_markup
         )
         
         return EDIT_NAME
@@ -895,7 +902,8 @@ def edit_place_name(update: Update, context: CallbackContext) -> int:
         [InlineKeyboardButton("локальный", callback_data='edit_vibe_local'),
         InlineKeyboardButton("туристический", callback_data='edit_vibe_tourist')],
         [InlineKeyboardButton("лакшери", callback_data='edit_vibe_luxury'),
-        InlineKeyboardButton("романтический", callback_data='edit_vibe_romantic')]
+        InlineKeyboardButton("романтический", callback_data='edit_vibe_romantic')],
+        [InlineKeyboardButton("⏭️ Пропустить", callback_data='edit_skip')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
@@ -903,11 +911,6 @@ def edit_place_name(update: Update, context: CallbackContext) -> int:
     update.message.reply_text(
         "Выберите новый вайб места:",
         reply_markup=reply_markup
-    )
-    
-    # Отправляем дополнительное сообщение
-    update.message.reply_text(
-        "Или нажмите /skip чтобы пропустить:"
     )
     
     logger.info("Запрошен новый вайб места через кнопки")
@@ -953,7 +956,8 @@ def edit_place_vibe(update: Update, context: CallbackContext) -> int:
         InlineKeyboardButton("паб", callback_data='edit_type_pub')],
         [InlineKeyboardButton("пиццерия", callback_data='edit_type_pizzeria'),
         InlineKeyboardButton("кальянная", callback_data='edit_type_hookah')],
-        [InlineKeyboardButton("кофейня", callback_data='edit_type_coffee')]
+        [InlineKeyboardButton("кофейня", callback_data='edit_type_coffee')],
+        [InlineKeyboardButton("⏭️ Пропустить", callback_data='edit_skip')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
@@ -961,11 +965,6 @@ def edit_place_vibe(update: Update, context: CallbackContext) -> int:
     query.message.reply_text(
         "Выберите новый тип места:",
         reply_markup=reply_markup
-    )
-    
-    # Отправляем дополнительное сообщение
-    query.message.reply_text(
-        "Или нажмите /skip чтобы пропустить:"
     )
     
     logger.info("Запрошен новый тип места через кнопки")
@@ -1011,11 +1010,6 @@ def edit_place_type(update: Update, context: CallbackContext) -> int:
         reply_markup=reply_markup
     )
     
-    # Отправляем дополнительное сообщение
-    query.message.reply_text(
-        "Или нажмите /skip чтобы пропустить:"
-    )
-    
     logger.info("Запрошена новая геолокация места")
     return EDIT_LOCATION
 
@@ -1052,15 +1046,14 @@ def edit_place_location(update: Update, context: CallbackContext) -> int:
     # Сохраняем текущее состояние для функции skip
     context.user_data['current_edit_state'] = EDIT_LOCATION
     
-    # Запрашиваем фото места
+    # Очищаем reply-клавиатуру и запрашиваем фото места с кнопкой пропуска
     logger.info("[EDIT_LOCATION] Запрашиваем новое фото места")
-    update.message.reply_text(
-        "Отлично! Теперь отправьте новое фото места."
-    )
+    keyboard = [[InlineKeyboardButton("⏭️ Пропустить", callback_data='edit_skip')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
     
-    # Отправляем дополнительное сообщение
     update.message.reply_text(
-        "Или нажмите /skip чтобы пропустить:"
+        "Отлично! Теперь отправьте новое фото места.",
+        reply_markup=ReplyKeyboardRemove()
     )
     
     return EDIT_PHOTO
@@ -1116,16 +1109,15 @@ def handle_edit_photo(update: Update, context: CallbackContext) -> int:
         # Сохраняем текущее состояние для функции skip
         context.user_data['current_edit_state'] = EDIT_PHOTO
         
-        # Запрашиваем описание места
+        # Запрашиваем описание места с кнопкой пропуска
         logger.info("Запрашиваем новое описание места")
+        keyboard = [[InlineKeyboardButton("⏭️ Пропустить", callback_data='edit_skip')]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
         update.message.reply_text(
             "Отлично! Теперь напишите новое описание места. "
-            "Опишите атмосферу, особенности, что здесь можно делать."
-        )
-        
-        # Отправляем дополнительное сообщение
-        update.message.reply_text(
-            "Или нажмите /skip чтобы пропустить:"
+            "Опишите атмосферу, особенности, что здесь можно делать.",
+            reply_markup=reply_markup
         )
         
         logger.info("Переходим к состоянию EDIT_REVIEW")
@@ -1215,7 +1207,6 @@ def edit_place_review(update: Update, context: CallbackContext) -> int:
         
         logger.info(f"[DATABASE] Отправляем сообщение об успехе: {success_message}")
         update.message.reply_text(success_message)
-        
         # Очищаем данные редактирования
         context.user_data.pop('editing_place', None)
         context.user_data.pop('edit_name', None)
@@ -1226,11 +1217,7 @@ def edit_place_review(update: Update, context: CallbackContext) -> int:
         context.user_data.pop('edit_latitude', None)
         context.user_data.pop('edit_placephotos', None)
         context.user_data.pop('current_edit_state', None)
-        
-        # Показываем главное меню
         show_main_menu(update, context)
-        logger.info("Показано главное меню после редактирования")
-        
         return ConversationHandler.END
             
     except Exception as e:
@@ -1239,6 +1226,22 @@ def edit_place_review(update: Update, context: CallbackContext) -> int:
         logger.error(f"[DATABASE] Полный traceback:", exc_info=True)
         update.message.reply_text("Произошла ошибка при обновлении места. Попробуйте еще раз.")
         return EDIT_REVIEW
+
+def skip_button_handler(update: Update, context: CallbackContext) -> int:
+    """Обработчик для inline-кнопки 'Пропустить'."""
+    logger.info("Начало функции skip_button_handler")
+    
+    # Получаем callback query
+    query = update.callback_query
+    query.answer()  # Отвечаем на callback query
+    
+    # Создаем новый update с message из callback query
+    # Это нужно для совместимости с skip_edit_step
+    if not hasattr(update, 'message') or update.message is None:
+        update.message = query.message
+    
+    # Вызываем основную функцию пропуска
+    return skip_edit_step(update, context)
 
 def skip_edit_step(update: Update, context: CallbackContext) -> int:
     """Пропускает текущий шаг редактирования и переходит к следующему."""
@@ -1259,18 +1262,14 @@ def skip_edit_step(update: Update, context: CallbackContext) -> int:
             [InlineKeyboardButton("локальный", callback_data='edit_vibe_local'),
             InlineKeyboardButton("туристический", callback_data='edit_vibe_tourist')],
             [InlineKeyboardButton("лакшери", callback_data='edit_vibe_luxury'),
-            InlineKeyboardButton("романтический", callback_data='edit_vibe_romantic')]
+            InlineKeyboardButton("романтический", callback_data='edit_vibe_romantic')],
+            [InlineKeyboardButton("⏭️ Пропустить", callback_data='edit_skip')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
         update.message.reply_text(
             "Выберите новый вайб места:",
             reply_markup=reply_markup
-        )
-        
-        # Отправляем дополнительное сообщение
-        update.message.reply_text(
-            "Или нажмите /skip чтобы пропустить:"
         )
         
         # Обновляем состояние
@@ -1287,7 +1286,8 @@ def skip_edit_step(update: Update, context: CallbackContext) -> int:
             InlineKeyboardButton("паб", callback_data='edit_type_pub')],
             [InlineKeyboardButton("пиццерия", callback_data='edit_type_pizzeria'),
             InlineKeyboardButton("кальянная", callback_data='edit_type_hookah')],
-            [InlineKeyboardButton("кофейня", callback_data='edit_type_coffee')]
+            [InlineKeyboardButton("кофейня", callback_data='edit_type_coffee')],
+            [InlineKeyboardButton("⏭️ Пропустить", callback_data='edit_skip')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
@@ -1296,29 +1296,19 @@ def skip_edit_step(update: Update, context: CallbackContext) -> int:
             reply_markup=reply_markup
         )
         
-        # Отправляем дополнительное сообщение
-        update.message.reply_text(
-            "Или нажмите /skip чтобы пропустить:"
-        )
-        
         # Обновляем состояние
         context.user_data['current_edit_state'] = EDIT_TYPE
         return EDIT_TYPE
         
     elif current_state == EDIT_TYPE:
         logger.info("Пропускаем редактирование типа")
-        # Переходим к геолокации
-        keyboard = [[KeyboardButton("📍 Отправить местоположение", request_location=True)]]
-        reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
+        # Переходим к геолокации - только inline-кнопка пропуска
+        skip_keyboard = [[InlineKeyboardButton("⏭️ Пропустить", callback_data='edit_skip')]]
+        skip_markup = InlineKeyboardMarkup(skip_keyboard)
         
         update.message.reply_text(
             "Отправьте новую геолокацию места:",
-            reply_markup=reply_markup
-        )
-        
-        # Отправляем дополнительное сообщение
-        update.message.reply_text(
-            "Или нажмите /skip чтобы пропустить:"
+            reply_markup=skip_markup
         )
         
         # Обновляем состояние
@@ -1327,15 +1317,13 @@ def skip_edit_step(update: Update, context: CallbackContext) -> int:
         
     elif current_state == EDIT_LOCATION:
         logger.info("Пропускаем редактирование геолокации")
-        # Переходим к фото
+        # Переходим к фото - только inline-кнопка пропуска
+        skip_keyboard = [[InlineKeyboardButton("⏭️ Пропустить", callback_data='edit_skip')]]
+        skip_markup = InlineKeyboardMarkup(skip_keyboard)
         
         update.message.reply_text(
-            "Отлично! Теперь отправьте новое фото места."
-        )
-        
-        # Отправляем дополнительное сообщение
-        update.message.reply_text(
-            "Или нажмите /skip чтобы пропустить:"
+            "Отлично! Теперь отправьте новое фото места.",
+            reply_markup=skip_markup
         )
         
         # Обновляем состояние
@@ -1344,16 +1332,14 @@ def skip_edit_step(update: Update, context: CallbackContext) -> int:
         
     elif current_state == EDIT_PHOTO:
         logger.info("Пропускаем редактирование фото")
-        # Переходим к описанию
+        # Переходим к описанию - только inline-кнопка пропуска
+        skip_keyboard = [[InlineKeyboardButton("⏭️ Пропустить", callback_data='edit_skip')]]
+        skip_markup = InlineKeyboardMarkup(skip_keyboard)
         
         update.message.reply_text(
             "Отлично! Теперь напишите новое описание места. "
-            "Опишите атмосферу, особенности, что здесь можно делать."
-        )
-        
-        # Отправляем дополнительное сообщение
-        update.message.reply_text(
-            "Или нажмите /skip чтобы пропустить:"
+            "Опишите атмосферу, особенности, что здесь можно делать.",
+            reply_markup=skip_markup
         )
         
         # Обновляем состояние
@@ -1362,7 +1348,18 @@ def skip_edit_step(update: Update, context: CallbackContext) -> int:
         
     elif current_state == EDIT_REVIEW:
         logger.info("Пропускаем редактирование описания")
-        # Завершаем редактирование
+        # Завершаем редактирование - создаем правильный update для edit_place_review
+        if not hasattr(update, 'message') or update.message is None:
+            # Если update из callback query, создаем фиктивное сообщение
+            class FakeMessage:
+                def __init__(self, text):
+                    self.text = text
+                def reply_text(self, text, **kwargs):
+                    # Используем query.message для отправки
+                    return update.callback_query.message.reply_text(text, **kwargs)
+            
+            update.message = FakeMessage("")
+        
         return edit_place_review(update, context)
     
     else:
@@ -1449,26 +1446,32 @@ def main() -> None:
             EDIT_CONFIRM: [CallbackQueryHandler(handle_edit_confirmation, pattern='^edit_confirm_')],
             EDIT_NAME: [
                 MessageHandler(Filters.text & ~Filters.command, edit_place_name),
+                CallbackQueryHandler(skip_button_handler, pattern='^edit_skip$'),
                 CommandHandler("skip", skip_edit_step)
             ],
             EDIT_VIBE: [
                 CallbackQueryHandler(edit_place_vibe, pattern='^edit_vibe_'),
+                CallbackQueryHandler(skip_button_handler, pattern='^edit_skip$'),
                 CommandHandler("skip", skip_edit_step)
             ],
             EDIT_TYPE: [
                 CallbackQueryHandler(edit_place_type, pattern='^edit_type_'),
+                CallbackQueryHandler(skip_button_handler, pattern='^edit_skip$'),
                 CommandHandler("skip", skip_edit_step)
             ],
             EDIT_LOCATION: [
                 MessageHandler(Filters.location, edit_place_location),
+                CallbackQueryHandler(skip_button_handler, pattern='^edit_skip$'),
                 CommandHandler("skip", skip_edit_step)
             ],
             EDIT_PHOTO: [
                 MessageHandler(Filters.photo, handle_edit_photo),
+                CallbackQueryHandler(skip_button_handler, pattern='^edit_skip$'),
                 CommandHandler("skip", skip_edit_step)
             ],
             EDIT_REVIEW: [
                 MessageHandler(Filters.text & ~Filters.command, edit_place_review),
+                CallbackQueryHandler(skip_button_handler, pattern='^edit_skip$'),
                 CommandHandler("skip", skip_edit_step)
             ]
         },
