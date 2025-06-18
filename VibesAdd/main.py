@@ -436,7 +436,9 @@ def handle_photo(update: Update, context: CallbackContext) -> int:
     
     if not update.message or not update.message.photo:
         logger.error("Получено пустое фото")
-        update.message.reply_text("Пожалуйста, отправьте фото места.")
+        update.message.reply_text(
+            "Пожалуйста, отправьте фото места."
+        )
         return PHOTO
         
     try:
@@ -487,7 +489,9 @@ def handle_photo(update: Update, context: CallbackContext) -> int:
         
     except Exception as e:
         logger.error(f"Ошибка при обработке фото: {str(e)}")
-        update.message.reply_text("Произошла ошибка при обработке фото. Попробуйте еще раз.")
+        update.message.reply_text(
+            "Произошла ошибка при обработке фото. Попробуйте еще раз."
+        )
         return PHOTO
 
 def add_place_review(update: Update, context: CallbackContext) -> int:
@@ -496,7 +500,9 @@ def add_place_review(update: Update, context: CallbackContext) -> int:
     
     if not update.message or not update.message.text:
         logger.error("Получено пустое описание места")
-        update.message.reply_text("Пожалуйста, введите описание места.")
+        update.message.reply_text(
+            "Пожалуйста, введите описание места."
+        )
         return REVIEW
         
     review = update.message.text
@@ -1016,7 +1022,9 @@ def handle_edit_photo(update: Update, context: CallbackContext) -> int:
     
     if not update.message or not update.message.photo:
         logger.error("Получено пустое фото")
-        update.message.reply_text("Пожалуйста, отправьте новое фото места.")
+        update.message.reply_text(
+            "Пожалуйста, отправьте новое фото места."
+        )
         return EDIT_PHOTO
         
     try:
@@ -1067,7 +1075,9 @@ def handle_edit_photo(update: Update, context: CallbackContext) -> int:
         
     except Exception as e:
         logger.error(f"Ошибка при обработке нового фото: {str(e)}")
-        update.message.reply_text("Произошла ошибка при обработке фото. Попробуйте еще раз.")
+        update.message.reply_text(
+            "Произошла ошибка при обработке фото. Попробуйте еще раз."
+        )
         return EDIT_PHOTO
 
 def edit_place_review(update: Update, context: CallbackContext) -> int:
@@ -1076,7 +1086,9 @@ def edit_place_review(update: Update, context: CallbackContext) -> int:
     
     if not update.message or not update.message.text:
         logger.error("Получено пустое описание места")
-        update.message.reply_text("Пожалуйста, введите новое описание места.")
+        update.message.reply_text(
+            "Пожалуйста, введите новое описание места."
+        )
         return EDIT_REVIEW
         
     review = update.message.text
@@ -1189,8 +1201,12 @@ def main() -> None:
             VIBE: [CallbackQueryHandler(add_place_vibe, pattern='^vibe_')],
             TYPE: [CallbackQueryHandler(add_place_type, pattern='^type_')],
             LOCATION: [MessageHandler(Filters.location, add_place_location)],
-            PHOTO: [MessageHandler(Filters.photo, handle_photo)],
-            REVIEW: [MessageHandler(Filters.text & ~Filters.command, add_place_review)]
+            PHOTO: [
+                MessageHandler(Filters.photo, handle_photo),
+            ],
+            REVIEW: [
+                MessageHandler(Filters.text & ~Filters.command, add_place_review),
+            ]
         },
         fallbacks=[CommandHandler("cancel", cancel)],
         allow_reentry=True,
@@ -1209,8 +1225,12 @@ def main() -> None:
             EDIT_VIBE: [CallbackQueryHandler(edit_place_vibe, pattern='^edit_vibe_')],
             EDIT_TYPE: [CallbackQueryHandler(edit_place_type, pattern='^edit_type_')],
             EDIT_LOCATION: [MessageHandler(Filters.location, edit_place_location)],
-            EDIT_PHOTO: [MessageHandler(Filters.photo, handle_edit_photo)],
-            EDIT_REVIEW: [MessageHandler(Filters.text & ~Filters.command, edit_place_review)]
+            EDIT_PHOTO: [
+                MessageHandler(Filters.photo, handle_edit_photo),
+            ],
+            EDIT_REVIEW: [
+                MessageHandler(Filters.text & ~Filters.command, edit_place_review),
+            ]
         },
         fallbacks=[CommandHandler("cancel", cancel)],
         allow_reentry=True,
