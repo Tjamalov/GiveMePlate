@@ -6,6 +6,8 @@ from config import TELEGRAM_BOT_TOKEN, AUTHORIZED_USERS
 from supabase_client import supabase
 from math import radians, sin, cos, sqrt, atan2
 import time
+from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
 
 # Настройка логирования
 logging.basicConfig(
@@ -358,11 +360,11 @@ def add_place_type(update: Update, context: CallbackContext) -> int:
 
 def add_place_location(update: Update, context: CallbackContext) -> int:
     """Сохраняем геолокацию и запрашиваем фото места."""
-    logger.info("Начало функции add_place_location")
+    logger.info("[LOCATION] Начало функции add_place_location")
     
     if not update.message or not update.message.location:
         # Запрашиваем геолокацию
-        logger.info("Запрашиваем геолокацию для нового места")
+        logger.info("[LOCATION] Запрашиваем геолокацию для нового места")
         context.user_data['waiting_for_place_location'] = True
         message = (
             "Пожалуйста, отправьте геолокацию места. "
@@ -373,22 +375,21 @@ def add_place_location(update: Update, context: CallbackContext) -> int:
         
     # Если геолокация уже получена
     user_location = update.message.location
-    logger.info(f"Получена геолокация для нового места: {user_location.latitude}, {user_location.longitude}")
+    logger.info(f"[LOCATION] Получена геолокация для нового места: {user_location.latitude}, {user_location.longitude}")
     
     # Сохраняем координаты
     context.user_data['longitude'] = user_location.longitude
     context.user_data['latitude'] = user_location.latitude
+    logger.info(f"[LOCATION] Координаты сохранены в контексте: {user_location.longitude}, {user_location.latitude}")
     
-    # Получаем адрес из геолокации
-    if hasattr(user_location, 'address') and user_location.address:
-        context.user_data['address'] = user_location.address
-        logger.info(f"Получен адрес из Telegram: {user_location.address}")
-    else:
-        # Если адрес не доступен, используем координаты как адрес
-        context.user_data['address'] = f"{user_location.latitude}, {user_location.longitude}"
-        logger.info("Адрес не найден, используем координаты")
+    # Получаем адрес через Nominatim
+    logger.info(f"[LOCATION] Начинаем получение адреса через Nominatim")
+    address = get_address_from_coordinates(user_location.latitude, user_location.longitude)
+    context.user_data['address'] = address
+    logger.info(f"[LOCATION] Адрес получен и сохранен в контексте: {address}")
     
     # Запрашиваем фото места
+    logger.info("[LOCATION] Запрашиваем фото места у пользователя")
     update.message.reply_text(
         "Отлично! Теперь отправьте фото места."
     )
@@ -586,6 +587,104 @@ def cancel(update: Update, context: CallbackContext) -> int:
     show_main_menu(update, context)
     
     return ConversationHandler.END
+
+def get_address_from_coordinates(latitude, longitude):
+    """Получает адрес по координатам через Nominatim и обрезает до улицы и дома."""
+    logger.info(f"[GEOCODING] Начало получения адреса для координат: {latitude}, {longitude}")
+    
+    try:
+        logger.info(f"[GEOCODING] Создаем геолокатор Nominatim")
+        geolocator = Nominatim(user_agent="VibesAdd_Bot")
+        
+        logger.info(f"[GEOCODING] Отправляем запрос к Nominatim")
+        location = geolocator.reverse(f"{latitude}, {longitude}")
+        
+        if location and location.address:
+            logger.info(f"[GEOCODING] Получен ответ от Nominatim")
+            logger.info(f"[GEOCODING] Полный адрес: {location.address}")
+            logger.info(f"[GEOCODING] Сырые данные: {location.raw}")
+            
+            # Ищем улицу и дом в адресе
+            logger.info(f"[GEOCODING] Извлекаем улицу и дом из адреса")
+            street_address = extract_street_and_house(location.raw)
+            
+            if street_address:
+                logger.info(f"[GEOCODING] Успешно извлечен адрес улицы: {street_address}")
+                return street_address
+            else:
+                logger.warning(f"[GEOCODING] Не удалось извлечь улицу и дом из адреса. Используем координаты")
+                fallback_address = f"{latitude}, {longitude}"
+                logger.info(f"[GEOCODING] Fallback адрес: {fallback_address}")
+                return fallback_address
+        else:
+            logger.warning(f"[GEOCODING] Адрес не получен от Nominatim. Используем координаты")
+            fallback_address = f"{latitude}, {longitude}"
+            logger.info(f"[GEOCODING] Fallback адрес: {fallback_address}")
+            return fallback_address
+            
+    except (GeocoderTimedOut, GeocoderUnavailable) as e:
+        logger.warning(f"[GEOCODING] Ошибка получения адреса (GeocoderTimedOut/GeocoderUnavailable): {e}")
+        fallback_address = f"{latitude}, {longitude}"
+        logger.info(f"[GEOCODING] Fallback адрес: {fallback_address}")
+        return fallback_address
+    except Exception as e:
+        logger.error(f"[GEOCODING] Неожиданная ошибка при получении адреса: {e}")
+        fallback_address = f"{latitude}, {longitude}"
+        logger.info(f"[GEOCODING] Fallback адрес: {fallback_address}")
+        return fallback_address
+
+def extract_street_and_house(address_data):
+    """Извлекает улицу и дом из данных адреса Nominatim."""
+    logger.info(f"[ADDRESS_PARSING] Начало извлечения улицы и дома из данных: {address_data}")
+    
+    try:
+        # Проверяем наличие улицы
+        if 'road' in address_data:
+            street = address_data['road']
+            house_number = address_data.get('house_number', '')
+            
+            logger.info(f"[ADDRESS_PARSING] Найдена улица 'road': {street}")
+            logger.info(f"[ADDRESS_PARSING] Номер дома: {house_number}")
+            
+            if house_number:
+                result = f"{street}, {house_number}"
+                logger.info(f"[ADDRESS_PARSING] Результат: {result}")
+                return result
+            else:
+                logger.info(f"[ADDRESS_PARSING] Результат (только улица): {street}")
+                return street
+                
+        elif 'street' in address_data:
+            street = address_data['street']
+            house_number = address_data.get('house_number', '')
+            
+            logger.info(f"[ADDRESS_PARSING] Найдена улица 'street': {street}")
+            logger.info(f"[ADDRESS_PARSING] Номер дома: {house_number}")
+            
+            if house_number:
+                result = f"{street}, {house_number}"
+                logger.info(f"[ADDRESS_PARSING] Результат: {result}")
+                return result
+            else:
+                logger.info(f"[ADDRESS_PARSING] Результат (только улица): {street}")
+                return street
+        else:
+            logger.warning(f"[ADDRESS_PARSING] Улица не найдена в данных адреса")
+            logger.info(f"[ADDRESS_PARSING] Доступные ключи: {list(address_data.keys())}")
+            
+            # Если нет улицы, пробуем найти что-то похожее
+            for key in ['name', 'amenity', 'building']:
+                if key in address_data:
+                    result = address_data[key]
+                    logger.info(f"[ADDRESS_PARSING] Найден альтернативный ключ '{key}': {result}")
+                    return result
+            
+            logger.warning(f"[ADDRESS_PARSING] Не найдено подходящих данных для адреса")
+            return None
+            
+    except Exception as e:
+        logger.error(f"[ADDRESS_PARSING] Ошибка при извлечении улицы и дома: {e}")
+        return None
 
 def calculate_distance(lat1, lon1, lat2, lon2):
     """Calculate distance between two points in kilometers."""
