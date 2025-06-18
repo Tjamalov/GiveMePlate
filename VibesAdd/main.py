@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 proxy_url = "http://127.0.0.1:7890"  # Измените на ваш прокси, если нужно
 
 # Определяем состояния диалога
-NAME, VIBE, TYPE, LOCATION, PHOTO, REVIEW = range(6)
+NAME, VIBE, TYPE, LOCATION, PHOTO, REVIEW, EDIT_ID, EDIT_CONFIRM, EDIT_NAME, EDIT_VIBE, EDIT_TYPE, EDIT_LOCATION, EDIT_PHOTO, EDIT_REVIEW = range(14)
 
 def start(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /start is issued."""
@@ -52,6 +52,10 @@ def button_handler(update: Update, context: CallbackContext) -> None:
         # Запрашиваем название места
         query.message.reply_text("Введите название места:")
         return NAME
+    elif query.data == 'edit_place':
+        # Запрашиваем ID места для редактирования
+        query.message.reply_text("Введите ID места, которое хотите отредактировать:")
+        return EDIT_ID
     elif query.data == 'more_places':
         # Увеличиваем номер страницы
         context.user_data['places_page'] = context.user_data.get('places_page', 0) + 1
@@ -64,14 +68,15 @@ def button_handler(update: Update, context: CallbackContext) -> None:
         query.message.reply_text("Неизвестная команда")
     
     # Отвечаем на callback query только если это не часть ConversationHandler
-    if query.data != 'add_place':
+    if query.data not in ['add_place', 'edit_place']:
         query.answer()
 
 def show_main_menu(update: Update, context: CallbackContext) -> None:
     """Show the main menu with buttons."""
     keyboard = [
         [InlineKeyboardButton("📋 Показать места", callback_data='list_places')],
-        [InlineKeyboardButton("➕ Добавить новое место", callback_data='add_place')]
+        [InlineKeyboardButton("➕ Добавить новое место", callback_data='add_place')],
+        [InlineKeyboardButton("✏️ Редактировать место", callback_data='edit_place')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
@@ -598,7 +603,7 @@ def cancel(update: Update, context: CallbackContext) -> int:
     context.user_data.clear()
     
     # Отправляем сообщение об отмене
-    update.message.reply_text("❌ Добавление места отменено.")
+    update.message.reply_text("❌ Операция отменена.")
     
     # Показываем главное меню
     show_main_menu(update, context)
@@ -768,6 +773,399 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     
     return distance
 
+def find_place_by_id(update: Update, context: CallbackContext) -> int:
+    """Поиск места по ID и показ информации."""
+    logger.info("Начало функции find_place_by_id")
+    
+    if not update.message or not update.message.text:
+        logger.error("Получен пустой ID места")
+        update.message.reply_text("Пожалуйста, введите ID места.")
+        return EDIT_ID
+        
+    try:
+        place_id = int(update.message.text.strip())
+        logger.info(f"Поиск места с ID: {place_id}")
+        
+        # Ищем место в базе данных
+        response = supabase.table('meal_places').select('*').eq('id', place_id).execute()
+        
+        if not response.data:
+            logger.warning(f"Место с ID {place_id} не найдено")
+            update.message.reply_text(f"Место с ID {place_id} не найдено. Попробуйте другой ID.")
+            return EDIT_ID
+        
+        place = response.data[0]
+        logger.info(f"Найдено место: {place['name']}")
+        
+        # Показываем информацию о месте
+        place_info = (
+            f"📍 Информация о месте:\n\n"
+            f"ID: {place['id']}\n"
+            f"Название: {place['name']}\n"
+            f"Вайб: {place['vibe']}\n"
+            f"Тип: {place['type']}\n"
+            f"Адрес: {place['address']}"
+        )
+        if place.get('placephotos'):
+            place_info += f"\nФото: {place['placephotos']}"
+        
+        # Сохраняем найденное место в контексте для редактирования
+        context.user_data['editing_place'] = place
+        
+        # Создаем кнопки для подтверждения
+        keyboard = [
+            [InlineKeyboardButton("✅ Да, редактировать", callback_data='edit_confirm_yes')],
+            [InlineKeyboardButton("❌ Нет, отменить", callback_data='edit_confirm_no')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        update.message.reply_text(
+            f"{place_info}\n\n"
+            f"Хотите отредактировать это место?",
+            reply_markup=reply_markup
+        )
+        
+        return EDIT_CONFIRM
+        
+    except ValueError:
+        logger.error("Получен некорректный ID")
+        update.message.reply_text("Пожалуйста, введите корректный ID (число).")
+        return EDIT_ID
+    except Exception as e:
+        logger.error(f"Ошибка при поиске места: {str(e)}")
+        update.message.reply_text("Произошла ошибка при поиске места. Попробуйте еще раз.")
+        return EDIT_ID
+
+def handle_edit_confirmation(update: Update, context: CallbackContext) -> int:
+    """Обработка подтверждения редактирования."""
+    query = update.callback_query
+    logger.info(f"Получено подтверждение редактирования: {query.data}")
+    
+    if query.data == 'edit_confirm_yes':
+        logger.info("Пользователь подтвердил редактирование")
+        # Начинаем процесс редактирования - запрашиваем новое название
+        query.message.reply_text("Введите новое название места:")
+        return EDIT_NAME
+    elif query.data == 'edit_confirm_no':
+        logger.info("Пользователь отменил редактирование")
+        # Очищаем данные и возвращаемся в главное меню
+        context.user_data.pop('editing_place', None)
+        show_main_menu(update, context)
+        return ConversationHandler.END
+    
+    return EDIT_CONFIRM
+
+def edit_place_name(update: Update, context: CallbackContext) -> int:
+    """Сохраняем новое название места и запрашиваем вайб."""
+    logger.info("Начало функции edit_place_name")
+    name = update.message.text
+    logger.info(f"Получено новое название места: {name}")
+    
+    # Сохраняем новое название
+    context.user_data['edit_name'] = name
+    logger.info("Новое название места сохранено")
+    
+    # Создаем кнопки с вариантами вайба
+    keyboard = [
+        [InlineKeyboardButton("тусовый", callback_data='edit_vibe_party'),
+        InlineKeyboardButton("панк", callback_data='edit_vibe_punk')],
+        [InlineKeyboardButton("хипстерский", callback_data='edit_vibe_hipster'),
+        InlineKeyboardButton("семейный", callback_data='edit_vibe_family')],
+        [InlineKeyboardButton("локальный", callback_data='edit_vibe_local'),
+        InlineKeyboardButton("туристический", callback_data='edit_vibe_tourist')],
+        [InlineKeyboardButton("лакшери", callback_data='edit_vibe_luxury'),
+        InlineKeyboardButton("романтический", callback_data='edit_vibe_romantic')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    # Запрашиваем вайб
+    update.message.reply_text(
+        "Выберите новый вайб места:",
+        reply_markup=reply_markup
+    )
+    logger.info("Запрошен новый вайб места через кнопки")
+    return EDIT_VIBE
+
+def edit_place_vibe(update: Update, context: CallbackContext) -> int:
+    """Сохраняем новый вайб места и запрашиваем тип."""
+    logger.info("Начало функции edit_place_vibe")
+    
+    # Получаем вайб из callback_data
+    query = update.callback_query
+    vibe_map = {
+        'edit_vibe_party': 'тусовый',
+        'edit_vibe_punk': 'панк',
+        'edit_vibe_hipster': 'хипстерский',
+        'edit_vibe_family': 'семейный',
+        'edit_vibe_local': 'локальный',
+        'edit_vibe_tourist': 'туристический',
+        'edit_vibe_luxury': 'лакшери',
+        'edit_vibe_romantic': 'романтический'
+    }
+    
+    vibe = vibe_map.get(query.data)
+    if not vibe:
+        logger.error(f"Получен неизвестный вайб: {query.data}")
+        query.message.reply_text("Пожалуйста, выберите вайб из предложенных вариантов.")
+        return EDIT_VIBE
+    
+    logger.info(f"Получен новый вайб места: {vibe}")
+    
+    # Сохраняем вайб
+    context.user_data['edit_vibe'] = vibe
+    logger.info("Новый вайб места сохранен")
+    
+    # Создаем кнопки с вариантами типа места
+    keyboard = [
+        [InlineKeyboardButton("бар", callback_data='edit_type_bar'),
+        InlineKeyboardButton("кафе", callback_data='edit_type_cafe')],
+        [InlineKeyboardButton("ресторан", callback_data='edit_type_restaurant'),
+        InlineKeyboardButton("паб", callback_data='edit_type_pub')],
+        [InlineKeyboardButton("пиццерия", callback_data='edit_type_pizzeria'),
+        InlineKeyboardButton("кальянная", callback_data='edit_type_hookah')],
+        [InlineKeyboardButton("кофейня", callback_data='edit_type_coffee')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    # Запрашиваем тип места
+    query.message.reply_text(
+        "Выберите новый тип места:",
+        reply_markup=reply_markup
+    )
+    logger.info("Запрошен новый тип места через кнопки")
+    return EDIT_TYPE
+
+def edit_place_type(update: Update, context: CallbackContext) -> int:
+    """Сохраняем новый тип места и запрашиваем геолокацию."""
+    logger.info("Начало функции edit_place_type")
+    
+    # Получаем тип из callback_data
+    query = update.callback_query
+    type_map = {
+        'edit_type_bar': 'бар',
+        'edit_type_cafe': 'кафе',
+        'edit_type_restaurant': 'ресторан',
+        'edit_type_pub': 'паб',
+        'edit_type_pizzeria': 'пиццерия',
+        'edit_type_hookah': 'кальянная',
+        'edit_type_coffee': 'кофейня'
+    }
+    
+    place_type = type_map.get(query.data)
+    if not place_type:
+        logger.error(f"Получен неизвестный тип места: {query.data}")
+        query.message.reply_text("Пожалуйста, выберите тип из предложенных вариантов.")
+        return EDIT_TYPE
+    
+    logger.info(f"Получен новый тип места: {place_type}")
+    
+    # Сохраняем тип
+    context.user_data['edit_type'] = place_type
+    logger.info("Новый тип места сохранен")
+    
+    # Запрашиваем геолокацию
+    keyboard = [[KeyboardButton("📍 Отправить местоположение", request_location=True)]]
+    reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
+    query.message.reply_text(
+        "Отправьте новую геолокацию места:",
+        reply_markup=reply_markup
+    )
+    logger.info("Запрошена новая геолокация места")
+    return EDIT_LOCATION
+
+def edit_place_location(update: Update, context: CallbackContext) -> int:
+    """Сохраняем новую геолокацию и запрашиваем фото места."""
+    logger.info("[EDIT_LOCATION] Начало функции edit_place_location")
+    
+    if not update.message or not update.message.location:
+        # Запрашиваем геолокацию
+        logger.info("[EDIT_LOCATION] Запрашиваем геолокацию для редактирования места")
+        context.user_data['waiting_for_edit_location'] = True
+        message = (
+            "Пожалуйста, отправьте новую геолокацию места. "
+            "Нажмите на кнопку ниже, чтобы отправить местоположение."
+        )
+        send_location_request(message, update)
+        return EDIT_LOCATION
+        
+    # Если геолокация уже получена
+    user_location = update.message.location
+    logger.info(f"[EDIT_LOCATION] Получена новая геолокация: {user_location.latitude}, {user_location.longitude}")
+    
+    # Сохраняем координаты
+    context.user_data['edit_longitude'] = user_location.longitude
+    context.user_data['edit_latitude'] = user_location.latitude
+    logger.info(f"[EDIT_LOCATION] Новые координаты сохранены: {user_location.longitude}, {user_location.latitude}")
+    
+    # Получаем адрес через Nominatim
+    logger.info(f"[EDIT_LOCATION] Начинаем получение нового адреса через Nominatim")
+    address = get_address_from_coordinates(user_location.latitude, user_location.longitude)
+    context.user_data['edit_address'] = address
+    logger.info(f"[EDIT_LOCATION] Новый адрес получен: {address}")
+    
+    # Запрашиваем фото места
+    logger.info("[EDIT_LOCATION] Запрашиваем новое фото места")
+    update.message.reply_text(
+        "Отлично! Теперь отправьте новое фото места."
+    )
+    return EDIT_PHOTO
+
+def handle_edit_photo(update: Update, context: CallbackContext) -> int:
+    """Обработчик получения нового фото."""
+    logger.info("Начало функции handle_edit_photo")
+    
+    if not update.message or not update.message.photo:
+        logger.error("Получено пустое фото")
+        update.message.reply_text("Пожалуйста, отправьте новое фото места.")
+        return EDIT_PHOTO
+        
+    try:
+        # Получаем фото с наилучшим качеством
+        photo = update.message.photo[-1]
+        file_id = photo.file_id
+        
+        # Получаем файл через Telegram API
+        file = context.bot.get_file(file_id)
+        
+        # Скачиваем файл во временную директорию
+        temp_path = f"/tmp/{file_id}.jpg"
+        file.download(temp_path)
+        
+        # Загружаем файл в Supabase Storage
+        with open(temp_path, 'rb') as f:
+            file_data = f.read()
+            
+        # Генерируем уникальное имя файла
+        place_name = sanitize_filename(context.user_data.get('edit_name', 'unknown'))
+        file_name = f"place_{place_name}_{int(time.time())}.jpg"
+        
+        # Загружаем в Storage
+        response = supabase.storage.from_('photo').upload(
+            file_name,
+            file_data,
+            {'content-type': 'image/jpeg'}
+        )
+        
+        # Получаем публичный URL
+        photo_url = supabase.storage.from_('photo').get_public_url(file_name)
+        
+        # Сохраняем URL в контексте
+        context.user_data['edit_placephotos'] = photo_url
+        logger.info(f"Новое фото успешно загружено: {photo_url}")
+        
+        # Удаляем временный файл
+        os.remove(temp_path)
+        
+        # Запрашиваем описание места
+        logger.info("Запрашиваем новое описание места")
+        update.message.reply_text(
+            "Отлично! Теперь напишите новое описание места. "
+            "Опишите атмосферу, особенности, что здесь можно делать."
+        )
+        logger.info("Переходим к состоянию EDIT_REVIEW")
+        return EDIT_REVIEW
+        
+    except Exception as e:
+        logger.error(f"Ошибка при обработке нового фото: {str(e)}")
+        update.message.reply_text("Произошла ошибка при обработке фото. Попробуйте еще раз.")
+        return EDIT_PHOTO
+
+def edit_place_review(update: Update, context: CallbackContext) -> int:
+    """Сохраняем новое описание и обновляем место в базе данных."""
+    logger.info("Начало функции edit_place_review")
+    
+    if not update.message or not update.message.text:
+        logger.error("Получено пустое описание места")
+        update.message.reply_text("Пожалуйста, введите новое описание места.")
+        return EDIT_REVIEW
+        
+    review = update.message.text
+    logger.info(f"Получено новое описание места: {review}")
+    
+    try:
+        # Получаем ID редактируемого места
+        editing_place = context.user_data.get('editing_place')
+        if not editing_place:
+            logger.error("Не найдено место для редактирования")
+            update.message.reply_text("Ошибка: место для редактирования не найдено.")
+            return ConversationHandler.END
+        
+        place_id = editing_place['id']
+        logger.info(f"Обновляем место с ID: {place_id}")
+        
+        # Подготавливаем данные для обновления
+        update_data = {}
+        
+        # Добавляем только те поля, которые были изменены
+        if 'edit_name' in context.user_data:
+            update_data['name'] = context.user_data['edit_name']
+        if 'edit_vibe' in context.user_data:
+            update_data['vibe'] = context.user_data['edit_vibe']
+        if 'edit_type' in context.user_data:
+            update_data['type'] = context.user_data['edit_type']
+        if 'edit_address' in context.user_data:
+            update_data['address'] = context.user_data['edit_address']
+        if 'edit_longitude' in context.user_data and 'edit_latitude' in context.user_data:
+            update_data['longitude'] = float(context.user_data['edit_longitude'])
+            update_data['latitude'] = float(context.user_data['edit_latitude'])
+            update_data['location'] = f"POINT({context.user_data['edit_longitude']} {context.user_data['edit_latitude']})"
+        if 'edit_placephotos' in context.user_data:
+            update_data['placephotos'] = context.user_data['edit_placephotos']
+        
+        # Всегда обновляем описание
+        update_data['revew'] = review
+        
+        logger.info(f"[DATABASE] Данные для обновления: {update_data}")
+        
+        # Обновляем место в базе данных
+        logger.info("[DATABASE] Отправляем запрос к Supabase для обновления места")
+        response = supabase.table('meal_places').update(update_data).eq('id', place_id).execute()
+        
+        logger.info(f"[DATABASE] Получен ответ от Supabase: {response}")
+        
+        if not response.data:
+            logger.error("[DATABASE] Ошибка при обновлении места: нет данных в ответе")
+            update.message.reply_text("Произошла ошибка при обновлении места. Попробуйте еще раз.")
+            return EDIT_REVIEW
+        
+        # Отправляем сообщение об успехе
+        success_message = (
+            f"✅ Место успешно обновлено!\n\n"
+            f"ID: {place_id}\n"
+            f"Название: {update_data.get('name', editing_place['name'])}\n"
+            f"Вайб: {update_data.get('vibe', editing_place['vibe'])}\n"
+            f"Тип: {update_data.get('type', editing_place['type'])}\n"
+            f"Адрес: {update_data.get('address', editing_place['address'])}"
+        )
+        if update_data.get('placephotos'):
+            success_message += f"\nФото: {update_data['placephotos']}"
+        
+        logger.info(f"[DATABASE] Отправляем сообщение об успехе: {success_message}")
+        update.message.reply_text(success_message)
+        
+        # Очищаем данные редактирования
+        context.user_data.pop('editing_place', None)
+        context.user_data.pop('edit_name', None)
+        context.user_data.pop('edit_vibe', None)
+        context.user_data.pop('edit_type', None)
+        context.user_data.pop('edit_address', None)
+        context.user_data.pop('edit_longitude', None)
+        context.user_data.pop('edit_latitude', None)
+        context.user_data.pop('edit_placephotos', None)
+        
+        # Показываем главное меню
+        show_main_menu(update, context)
+        logger.info("Показано главное меню после редактирования")
+        
+        return ConversationHandler.END
+            
+    except Exception as e:
+        logger.error(f"[DATABASE] Ошибка при обновлении места: {str(e)}")
+        logger.error(f"[DATABASE] Тип ошибки: {type(e).__name__}")
+        logger.error(f"[DATABASE] Полный traceback:", exc_info=True)
+        update.message.reply_text("Произошла ошибка при обновлении места. Попробуйте еще раз.")
+        return EDIT_REVIEW
+
 def main() -> None:
     """Запускаем бота."""
     if not TELEGRAM_BOT_TOKEN:
@@ -800,6 +1198,26 @@ def main() -> None:
         per_user=True
     )
     dispatcher.add_handler(conv_handler)
+    
+    # Добавляем обработчик диалога редактирования места
+    edit_conv_handler = ConversationHandler(
+        entry_points=[CallbackQueryHandler(button_handler, pattern='^edit_place$')],
+        states={
+            EDIT_ID: [MessageHandler(Filters.text & ~Filters.command, find_place_by_id)],
+            EDIT_CONFIRM: [CallbackQueryHandler(handle_edit_confirmation, pattern='^edit_confirm_')],
+            EDIT_NAME: [MessageHandler(Filters.text & ~Filters.command, edit_place_name)],
+            EDIT_VIBE: [CallbackQueryHandler(edit_place_vibe, pattern='^edit_vibe_')],
+            EDIT_TYPE: [CallbackQueryHandler(edit_place_type, pattern='^edit_type_')],
+            EDIT_LOCATION: [MessageHandler(Filters.location, edit_place_location)],
+            EDIT_PHOTO: [MessageHandler(Filters.photo, handle_edit_photo)],
+            EDIT_REVIEW: [MessageHandler(Filters.text & ~Filters.command, edit_place_review)]
+        },
+        fallbacks=[CommandHandler("cancel", cancel)],
+        allow_reentry=True,
+        per_chat=True,
+        per_user=True
+    )
+    dispatcher.add_handler(edit_conv_handler)
     
     # Добавляем обработчик геолокации (после ConversationHandler)
     dispatcher.add_handler(MessageHandler(Filters.location, handle_location))
