@@ -8,13 +8,13 @@ from math import radians, sin, cos, sqrt, atan2
 import time
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
+import signal
 
 # Настройка логирования
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO,
     handlers=[
-        logging.FileHandler('/home/Creogenka/VibesAdd/bot.log'),
         logging.StreamHandler()
     ]
 )
@@ -849,13 +849,25 @@ def handle_edit_confirmation(update: Update, context: CallbackContext) -> int:
     
     if query.data == 'edit_confirm_yes':
         logger.info("Пользователь подтвердил редактирование")
+        # Устанавливаем начальное состояние для функции skip
+        context.user_data['current_edit_state'] = EDIT_NAME
+        
         # Начинаем процесс редактирования - запрашиваем новое название
-        query.message.reply_text("Введите новое название места:")
+        query.message.reply_text(
+            "Введите новое название места:"
+        )
+        
+        # Отправляем дополнительное сообщение
+        query.message.reply_text(
+            "Или нажмите /skip чтобы пропустить:"
+        )
+        
         return EDIT_NAME
     elif query.data == 'edit_confirm_no':
         logger.info("Пользователь отменил редактирование")
         # Очищаем данные и возвращаемся в главное меню
         context.user_data.pop('editing_place', None)
+        context.user_data.pop('current_edit_state', None)
         show_main_menu(update, context)
         return ConversationHandler.END
     
@@ -870,6 +882,9 @@ def edit_place_name(update: Update, context: CallbackContext) -> int:
     # Сохраняем новое название
     context.user_data['edit_name'] = name
     logger.info("Новое название места сохранено")
+    
+    # Сохраняем текущее состояние для функции skip
+    context.user_data['current_edit_state'] = EDIT_NAME
     
     # Создаем кнопки с вариантами вайба
     keyboard = [
@@ -889,6 +904,12 @@ def edit_place_name(update: Update, context: CallbackContext) -> int:
         "Выберите новый вайб места:",
         reply_markup=reply_markup
     )
+    
+    # Отправляем дополнительное сообщение
+    update.message.reply_text(
+        "Или нажмите /skip чтобы пропустить:"
+    )
+    
     logger.info("Запрошен новый вайб места через кнопки")
     return EDIT_VIBE
 
@@ -921,6 +942,9 @@ def edit_place_vibe(update: Update, context: CallbackContext) -> int:
     context.user_data['edit_vibe'] = vibe
     logger.info("Новый вайб места сохранен")
     
+    # Сохраняем текущее состояние для функции skip
+    context.user_data['current_edit_state'] = EDIT_VIBE
+    
     # Создаем кнопки с вариантами типа места
     keyboard = [
         [InlineKeyboardButton("бар", callback_data='edit_type_bar'),
@@ -938,6 +962,12 @@ def edit_place_vibe(update: Update, context: CallbackContext) -> int:
         "Выберите новый тип места:",
         reply_markup=reply_markup
     )
+    
+    # Отправляем дополнительное сообщение
+    query.message.reply_text(
+        "Или нажмите /skip чтобы пропустить:"
+    )
+    
     logger.info("Запрошен новый тип места через кнопки")
     return EDIT_TYPE
 
@@ -969,13 +999,23 @@ def edit_place_type(update: Update, context: CallbackContext) -> int:
     context.user_data['edit_type'] = place_type
     logger.info("Новый тип места сохранен")
     
+    # Сохраняем текущее состояние для функции skip
+    context.user_data['current_edit_state'] = EDIT_TYPE
+    
     # Запрашиваем геолокацию
     keyboard = [[KeyboardButton("📍 Отправить местоположение", request_location=True)]]
     reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
+    
     query.message.reply_text(
         "Отправьте новую геолокацию места:",
         reply_markup=reply_markup
     )
+    
+    # Отправляем дополнительное сообщение
+    query.message.reply_text(
+        "Или нажмите /skip чтобы пропустить:"
+    )
+    
     logger.info("Запрошена новая геолокация места")
     return EDIT_LOCATION
 
@@ -1009,11 +1049,20 @@ def edit_place_location(update: Update, context: CallbackContext) -> int:
     context.user_data['edit_address'] = address
     logger.info(f"[EDIT_LOCATION] Новый адрес получен: {address}")
     
+    # Сохраняем текущее состояние для функции skip
+    context.user_data['current_edit_state'] = EDIT_LOCATION
+    
     # Запрашиваем фото места
     logger.info("[EDIT_LOCATION] Запрашиваем новое фото места")
     update.message.reply_text(
         "Отлично! Теперь отправьте новое фото места."
     )
+    
+    # Отправляем дополнительное сообщение
+    update.message.reply_text(
+        "Или нажмите /skip чтобы пропустить:"
+    )
+    
     return EDIT_PHOTO
 
 def handle_edit_photo(update: Update, context: CallbackContext) -> int:
@@ -1064,12 +1113,21 @@ def handle_edit_photo(update: Update, context: CallbackContext) -> int:
         # Удаляем временный файл
         os.remove(temp_path)
         
+        # Сохраняем текущее состояние для функции skip
+        context.user_data['current_edit_state'] = EDIT_PHOTO
+        
         # Запрашиваем описание места
         logger.info("Запрашиваем новое описание места")
         update.message.reply_text(
             "Отлично! Теперь напишите новое описание места. "
             "Опишите атмосферу, особенности, что здесь можно делать."
         )
+        
+        # Отправляем дополнительное сообщение
+        update.message.reply_text(
+            "Или нажмите /skip чтобы пропустить:"
+        )
+        
         logger.info("Переходим к состоянию EDIT_REVIEW")
         return EDIT_REVIEW
         
@@ -1093,6 +1151,9 @@ def edit_place_review(update: Update, context: CallbackContext) -> int:
         
     review = update.message.text
     logger.info(f"Получено новое описание места: {review}")
+    
+    # Сохраняем текущее состояние для функции skip
+    context.user_data['current_edit_state'] = EDIT_REVIEW
     
     try:
         # Получаем ID редактируемого места
@@ -1164,6 +1225,7 @@ def edit_place_review(update: Update, context: CallbackContext) -> int:
         context.user_data.pop('edit_longitude', None)
         context.user_data.pop('edit_latitude', None)
         context.user_data.pop('edit_placephotos', None)
+        context.user_data.pop('current_edit_state', None)
         
         # Показываем главное меню
         show_main_menu(update, context)
@@ -1178,11 +1240,175 @@ def edit_place_review(update: Update, context: CallbackContext) -> int:
         update.message.reply_text("Произошла ошибка при обновлении места. Попробуйте еще раз.")
         return EDIT_REVIEW
 
+def skip_edit_step(update: Update, context: CallbackContext) -> int:
+    """Пропускает текущий шаг редактирования и переходит к следующему."""
+    logger.info("Начало функции skip_edit_step")
+    
+    # Определяем текущее состояние
+    current_state = context.user_data.get('current_edit_state')
+    logger.info(f"Пропускаем шаг: {current_state}")
+    
+    if current_state == EDIT_NAME:
+        logger.info("Пропускаем редактирование названия")
+        # Переходим к выбору вайба
+        keyboard = [
+            [InlineKeyboardButton("тусовый", callback_data='edit_vibe_party'),
+            InlineKeyboardButton("панк", callback_data='edit_vibe_punk')],
+            [InlineKeyboardButton("хипстерский", callback_data='edit_vibe_hipster'),
+            InlineKeyboardButton("семейный", callback_data='edit_vibe_family')],
+            [InlineKeyboardButton("локальный", callback_data='edit_vibe_local'),
+            InlineKeyboardButton("туристический", callback_data='edit_vibe_tourist')],
+            [InlineKeyboardButton("лакшери", callback_data='edit_vibe_luxury'),
+            InlineKeyboardButton("романтический", callback_data='edit_vibe_romantic')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        update.message.reply_text(
+            "Выберите новый вайб места:",
+            reply_markup=reply_markup
+        )
+        
+        # Отправляем дополнительное сообщение
+        update.message.reply_text(
+            "Или нажмите /skip чтобы пропустить:"
+        )
+        
+        # Обновляем состояние
+        context.user_data['current_edit_state'] = EDIT_VIBE
+        return EDIT_VIBE
+        
+    elif current_state == EDIT_VIBE:
+        logger.info("Пропускаем редактирование вайба")
+        # Переходим к выбору типа
+        keyboard = [
+            [InlineKeyboardButton("бар", callback_data='edit_type_bar'),
+            InlineKeyboardButton("кафе", callback_data='edit_type_cafe')],
+            [InlineKeyboardButton("ресторан", callback_data='edit_type_restaurant'),
+            InlineKeyboardButton("паб", callback_data='edit_type_pub')],
+            [InlineKeyboardButton("пиццерия", callback_data='edit_type_pizzeria'),
+            InlineKeyboardButton("кальянная", callback_data='edit_type_hookah')],
+            [InlineKeyboardButton("кофейня", callback_data='edit_type_coffee')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        update.message.reply_text(
+            "Выберите новый тип места:",
+            reply_markup=reply_markup
+        )
+        
+        # Отправляем дополнительное сообщение
+        update.message.reply_text(
+            "Или нажмите /skip чтобы пропустить:"
+        )
+        
+        # Обновляем состояние
+        context.user_data['current_edit_state'] = EDIT_TYPE
+        return EDIT_TYPE
+        
+    elif current_state == EDIT_TYPE:
+        logger.info("Пропускаем редактирование типа")
+        # Переходим к геолокации
+        keyboard = [[KeyboardButton("📍 Отправить местоположение", request_location=True)]]
+        reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
+        
+        update.message.reply_text(
+            "Отправьте новую геолокацию места:",
+            reply_markup=reply_markup
+        )
+        
+        # Отправляем дополнительное сообщение
+        update.message.reply_text(
+            "Или нажмите /skip чтобы пропустить:"
+        )
+        
+        # Обновляем состояние
+        context.user_data['current_edit_state'] = EDIT_LOCATION
+        return EDIT_LOCATION
+        
+    elif current_state == EDIT_LOCATION:
+        logger.info("Пропускаем редактирование геолокации")
+        # Переходим к фото
+        
+        update.message.reply_text(
+            "Отлично! Теперь отправьте новое фото места."
+        )
+        
+        # Отправляем дополнительное сообщение
+        update.message.reply_text(
+            "Или нажмите /skip чтобы пропустить:"
+        )
+        
+        # Обновляем состояние
+        context.user_data['current_edit_state'] = EDIT_PHOTO
+        return EDIT_PHOTO
+        
+    elif current_state == EDIT_PHOTO:
+        logger.info("Пропускаем редактирование фото")
+        # Переходим к описанию
+        
+        update.message.reply_text(
+            "Отлично! Теперь напишите новое описание места. "
+            "Опишите атмосферу, особенности, что здесь можно делать."
+        )
+        
+        # Отправляем дополнительное сообщение
+        update.message.reply_text(
+            "Или нажмите /skip чтобы пропустить:"
+        )
+        
+        # Обновляем состояние
+        context.user_data['current_edit_state'] = EDIT_REVIEW
+        return EDIT_REVIEW
+        
+    elif current_state == EDIT_REVIEW:
+        logger.info("Пропускаем редактирование описания")
+        # Завершаем редактирование
+        return edit_place_review(update, context)
+    
+    else:
+        logger.error(f"Неизвестное состояние для пропуска: {current_state}")
+        update.message.reply_text("Произошла ошибка. Попробуйте еще раз.")
+        return ConversationHandler.END
+
 def main() -> None:
     """Запускаем бота."""
     if not TELEGRAM_BOT_TOKEN:
         logger.error("No token provided!")
         return
+
+    # Проверяем, не запущен ли уже бот
+    pid_file = "/tmp/vibesadd_bot.pid"
+    
+    if os.path.exists(pid_file):
+        with open(pid_file, 'r') as f:
+            old_pid = f.read().strip()
+        
+        # Проверяем, работает ли процесс с этим PID
+        try:
+            os.kill(int(old_pid), 0)  # Проверяем существование процесса
+            logger.error(f"Бот уже запущен с PID {old_pid}")
+            logger.error("Остановите предыдущий экземпляр перед запуском нового")
+            return
+        except (OSError, ValueError):
+            # Процесс не существует, удаляем старый PID файл
+            os.remove(pid_file)
+    
+    # Сохраняем PID текущего процесса
+    with open(pid_file, 'w') as f:
+        f.write(str(os.getpid()))
+    
+    logger.info(f"Бот запущен с PID {os.getpid()}")
+    
+    # Функция для очистки PID файла при завершении
+    def cleanup_pid_file(signum, frame):
+        if os.path.exists(pid_file):
+            os.remove(pid_file)
+        logger.info("Бот завершен, PID файл очищен")
+        exit(0)
+    
+    # Регистрируем обработчики сигналов
+    signal.signal(signal.SIGINT, cleanup_pid_file)   # Ctrl+C
+    signal.signal(signal.SIGTERM, cleanup_pid_file)  # kill
 
     # Создаем Updater и передаем ему токен бота
     updater = Updater(TELEGRAM_BOT_TOKEN)
@@ -1221,15 +1447,29 @@ def main() -> None:
         states={
             EDIT_ID: [MessageHandler(Filters.text & ~Filters.command, find_place_by_id)],
             EDIT_CONFIRM: [CallbackQueryHandler(handle_edit_confirmation, pattern='^edit_confirm_')],
-            EDIT_NAME: [MessageHandler(Filters.text & ~Filters.command, edit_place_name)],
-            EDIT_VIBE: [CallbackQueryHandler(edit_place_vibe, pattern='^edit_vibe_')],
-            EDIT_TYPE: [CallbackQueryHandler(edit_place_type, pattern='^edit_type_')],
-            EDIT_LOCATION: [MessageHandler(Filters.location, edit_place_location)],
+            EDIT_NAME: [
+                MessageHandler(Filters.text & ~Filters.command, edit_place_name),
+                CommandHandler("skip", skip_edit_step)
+            ],
+            EDIT_VIBE: [
+                CallbackQueryHandler(edit_place_vibe, pattern='^edit_vibe_'),
+                CommandHandler("skip", skip_edit_step)
+            ],
+            EDIT_TYPE: [
+                CallbackQueryHandler(edit_place_type, pattern='^edit_type_'),
+                CommandHandler("skip", skip_edit_step)
+            ],
+            EDIT_LOCATION: [
+                MessageHandler(Filters.location, edit_place_location),
+                CommandHandler("skip", skip_edit_step)
+            ],
             EDIT_PHOTO: [
                 MessageHandler(Filters.photo, handle_edit_photo),
+                CommandHandler("skip", skip_edit_step)
             ],
             EDIT_REVIEW: [
                 MessageHandler(Filters.text & ~Filters.command, edit_place_review),
+                CommandHandler("skip", skip_edit_step)
             ]
         },
         fallbacks=[CommandHandler("cancel", cancel)],

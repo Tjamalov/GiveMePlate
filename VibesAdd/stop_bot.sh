@@ -63,6 +63,13 @@ REMAINING_PIDS=$(find_bot_processes)
 
 if [ -z "$REMAINING_PIDS" ]; then
     echo "✅ Все процессы бота успешно остановлены"
+    
+    # Очищаем PID файл
+    PID_FILE="/tmp/vibesadd_bot.pid"
+    if [ -f "$PID_FILE" ]; then
+        rm -f "$PID_FILE"
+        echo "🗑️  PID файл очищен"
+    fi
 else
     echo "❌ Остались процессы: $REMAINING_PIDS"
     echo "Попробуйте остановить их вручную:"
