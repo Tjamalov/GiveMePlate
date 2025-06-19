@@ -20,9 +20,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Настройка прокси
-proxy_url = "http://127.0.0.1:7890"  # Измените на ваш прокси, если нужно
-
 # Определяем состояния диалога
 NAME, VIBE, TYPE, LOCATION, PHOTO, REVIEW, EDIT_ID, EDIT_CONFIRM, EDIT_NAME, EDIT_VIBE, EDIT_TYPE, EDIT_LOCATION, EDIT_PHOTO, EDIT_REVIEW = range(14)
 

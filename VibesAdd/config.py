@@ -6,4 +6,4 @@ SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 TELEGRAM_BOT_TOKEN = '7942668394:AAFhwK5MOqClcC5GNlQduun0LdtAyr7cBPE'
 
 # List of authorized Telegram user IDs
-AUTHORIZED_USERS = [98663876]  # Add authorized user IDs here 
+AUTHORIZED_USERS = [98663876, 444580500, 416223313]  # Add authorized user IDs here 
